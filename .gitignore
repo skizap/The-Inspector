@@ -15,9 +15,13 @@ dist-ssr
 # Environment variables (contains secrets)
 .env
 .env.local
+.env.*.local
 
 # Kiro settings (contains API keys and tokens)
 .kiro/settings/
+
+# Vercel CLI cache
+.vercel
 
 # Editor directories and files
 .vscode/*
