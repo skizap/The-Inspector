@@ -1,0 +1,365 @@
+/* NutritionLabel Component Styles */
+
+/* Main Container */
+.nutrition-label {
+  max-width: 800px;
+  margin: var(--spacing-2xl) auto 0;
+  padding: var(--spacing-xl);
+  background: var(--color-surface);
+  border: 3px solid var(--color-text);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.nutrition-section {
+  margin-bottom: var(--spacing-xl);
+  padding-bottom: var(--spacing-xl);
+  border-bottom: 2px solid var(--color-text);
+}
+
+.nutrition-section:last-of-type {
+  border-bottom: none;
+}
+
+/* CSS Grid Layout for Package Info Section */
+.nutrition-section.package-info {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-md);
+}
+
+.nutrition-section.package-info > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--spacing-md);
+  align-items: center;
+}
+
+.nutrition-section h2 {
+  font-size: var(--font-size-2xl);
+  margin-bottom: var(--spacing-sm);
+}
+
+.nutrition-section h3 {
+  font-size: var(--font-size-xl);
+  margin-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--spacing-sm);
+}
+
+.nutrition-section h4 {
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+
+/* Typography and Stats */
+.stat-large {
+  font-size: var(--font-size-3xl);
+  font-weight: 700;
+  color: var(--color-primary);
+  line-height: 1;
+}
+
+.version {
+  font-size: var(--font-size-lg);
+  color: var(--color-secondary);
+  font-weight: 400;
+  margin-left: var(--spacing-sm);
+}
+
+.description {
+  margin-bottom: var(--spacing-md);
+}
+
+/* Badges */
+.license-badge {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  margin-left: var(--spacing-sm);
+}
+
+.severity-badge {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  color: white;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  margin-right: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Vulnerability Styles */
+.vulnerability-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: auto auto;
+  gap: var(--spacing-xs) var(--spacing-md);
+  align-items: start;
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  border-left: 4px solid;
+  border-radius: var(--radius-sm);
+  background: var(--color-background);
+}
+
+.vulnerability-item > strong {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.vulnerability-item .package-name {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.vulnerability-item .vuln-summary {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.vulnerability-item .cvss-score {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+}
+
+.vulnerability-item.critical {
+  border-left-color: var(--color-critical);
+}
+
+.vulnerability-item.high {
+  border-left-color: var(--color-high);
+}
+
+.vulnerability-item.medium {
+  border-left-color: var(--color-medium);
+}
+
+.vulnerability-item.low {
+  border-left-color: var(--color-low);
+}
+
+.vuln-summary {
+  margin-top: var(--spacing-xs);
+}
+
+.cvss-score {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.package-name {
+  margin-left: var(--spacing-sm);
+  color: var(--color-text-secondary);
+}
+
+.no-vulnerabilities {
+  padding: var(--spacing-md);
+  background: rgba(34, 197, 94, 0.1);
+  color: #16A34A;
+  border-radius: var(--radius-md);
+  text-align: center;
+  font-weight: 600;
+}
+
+/* AI Summary Styles */
+.risk-level {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  margin-bottom: var(--spacing-md);
+}
+
+.ai-unavailable {
+  padding: var(--spacing-md);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+/* Footer */
+.nutrition-footer {
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+/* DependencyTree Component */
+.dependency-tree {
+  margin-top: var(--spacing-md);
+}
+
+.dependency-tree h4 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-md);
+}
+
+.dependency-count {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.tree-container {
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm);
+  background: var(--color-background);
+}
+
+.tree-root {
+  list-style: none;
+  border-left: 2px solid var(--color-border);
+  padding-left: var(--spacing-lg);
+  margin: 0;
+}
+
+.tree-node {
+  position: relative;
+  padding-left: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  font-family: 'Courier New', monospace;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  transition: background-color 0.2s;
+}
+
+.tree-node::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: var(--spacing-md);
+  border-top: 2px solid var(--color-border);
+}
+
+.tree-node:hover {
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  padding-right: var(--spacing-sm);
+}
+
+/* Nested tree levels */
+.tree-node .tree-root {
+  margin-top: var(--spacing-xs);
+  padding-left: var(--spacing-md);
+}
+
+/* ExportButton Component */
+.export-button-container {
+  position: relative;
+  display: inline-block;
+  margin-bottom: var(--spacing-md);
+}
+
+.export-button {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.export-button:hover:not(:disabled) {
+  background: #1E3A8A;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.export-button:disabled {
+  background: var(--color-secondary);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.export-menu {
+  position: absolute;
+  top: calc(100% + var(--spacing-xs));
+  right: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 10;
+  min-width: 200px;
+  overflow: hidden;
+}
+
+.export-menu button {
+  display: block;
+  width: 100%;
+  padding: var(--spacing-md);
+  text-align: left;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+}
+
+.export-menu button:hover {
+  background: var(--color-background);
+}
+
+.export-menu button:not(:last-child) {
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  .nutrition-label {
+    padding: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+  }
+  
+  .nutrition-section {
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-lg);
+  }
+  
+  .stat-large {
+    font-size: var(--font-size-2xl);
+  }
+  
+  .tree-root {
+    padding-left: var(--spacing-md);
+  }
+  
+  .export-button-container {
+    width: 100%;
+  }
+  
+  .export-button {
+    width: 100%;
+  }
+  
+  .export-menu {
+    left: 0;
+    right: 0;
+  }
+}
