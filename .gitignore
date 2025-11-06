@@ -16,6 +16,9 @@ dist-ssr
 .env
 .env.local
 
+# Kiro settings (contains API keys and tokens)
+.kiro/settings/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
