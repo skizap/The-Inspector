@@ -50,14 +50,21 @@ Vercel CLI will ask several questions:
 - "In which directory is your code located?" → ./ (current directory)
 - "Want to override the settings?" → No (Vercel auto-detects Vite)
 
-**Step 5: Set Environment Variable**
+**Step 5: Set Environment Variables**
 
-After deployment, set the OpenAI API key:
+After deployment, set the required environment variables:
 ```bash
 vercel env add OPENAI_API_KEY
 ```
 
 Paste your OpenAI API key when prompted.
+Select "Production" environment.
+
+```bash
+vercel env add VITE_DEPLOY_PLATFORM
+```
+
+Enter `vercel` when prompted.
 Select "Production" environment.
 
 **Step 6: Redeploy with Environment Variable**
@@ -94,11 +101,16 @@ git push origin main
 - **Output Directory:** `dist` (auto-detected)
 - **Install Command:** `npm install` (auto-detected)
 
-**Step 4: Add Environment Variable**
+**Step 4: Add Environment Variables**
 - Click "Environment Variables"
-- Add variable:
+- Add first variable:
   - **Name:** `OPENAI_API_KEY`
   - **Value:** [Your OpenAI API key]
+  - **Environment:** Production, Preview, Development (select all)
+- Click "Add"
+- Add second variable:
+  - **Name:** `VITE_DEPLOY_PLATFORM`
+  - **Value:** `vercel`
   - **Environment:** Production, Preview, Development (select all)
 - Click "Add"
 
@@ -159,9 +171,10 @@ netlify init
 - "Directory to deploy" → `dist`
 - "Netlify functions folder" → `netlify/functions`
 
-**Step 5: Set Environment Variable**
+**Step 5: Set Environment Variables**
 ```bash
 netlify env:set OPENAI_API_KEY your_openai_api_key_here
+netlify env:set VITE_DEPLOY_PLATFORM netlify
 ```
 
 **Step 6: Deploy**
@@ -195,11 +208,14 @@ git push origin main
 - **Publish directory:** `dist`
 - **Functions directory:** `netlify/functions`
 
-**Step 4: Add Environment Variable**
+**Step 4: Add Environment Variables**
 - Click "Show advanced"
 - Click "New variable"
 - **Key:** `OPENAI_API_KEY`
 - **Value:** [Your OpenAI API key]
+- Click "New variable" again
+- **Key:** `VITE_DEPLOY_PLATFORM`
+- **Value:** `netlify`
 
 **Step 5: Deploy**
 - Click "Deploy site"
@@ -213,12 +229,34 @@ git push origin main
 
 ### Serverless Function Endpoints
 
-The Inspector automatically detects the deployment platform and uses the correct endpoint:
+The Inspector uses platform-specific endpoints for OpenAI API calls:
 
 - **Vercel**: `/api/analyze` (function in `api/analyze.js`)
 - **Netlify**: `/.netlify/functions/analyze` (function in `netlify/functions/analyze.js`)
 
-The frontend (`src/api/openai.js`) automatically detects the platform based on the hostname and routes requests to the correct endpoint. No manual configuration needed.
+### Platform Detection
+
+The frontend (`src/api/openai.js`) determines which endpoint to use via the `VITE_DEPLOY_PLATFORM` environment variable:
+
+**Recommended Configuration:**
+
+1. **Vercel Deployments:**
+   - Set `VITE_DEPLOY_PLATFORM=vercel` in Vercel dashboard (or omit—defaults to Vercel)
+   - Uses `/api/analyze` endpoint
+
+2. **Netlify Deployments:**
+   - Set `VITE_DEPLOY_PLATFORM=netlify` in Netlify dashboard
+   - Uses `/.netlify/functions/analyze` endpoint
+
+3. **Local Development with Netlify CLI:**
+   - Add `VITE_DEPLOY_PLATFORM=netlify` to your `.env` file
+   - Run `netlify dev` to test locally
+
+**Auto-Detection Limitations:**
+
+The application includes automatic fallback logic that tries the primary endpoint first and falls back to the alternative on 404/network errors. However, this auto-detection only works reliably on default Netlify subdomains (e.g., `*.netlify.app`).
+
+**For custom domains or production deployments, always set `VITE_DEPLOY_PLATFORM` explicitly to avoid unnecessary fallback attempts and ensure deterministic routing.**
 
 ### Vercel Configuration (vercel.json)
 
@@ -265,32 +303,77 @@ The project includes a `netlify.toml` file with optimized settings:
 
 The project includes a Netlify-compatible function at `netlify/functions/analyze.js` that mirrors the Vercel function logic but uses Netlify's `handler(event, context)` signature.
 
-**No changes needed** to these files for deployment.
+**Netlify Function Timeout Limits:**
+- Free tier: 10 seconds maximum execution time
+- Pro tier: 26 seconds maximum execution time
+
+**Important:** The default client timeout in `src/api/openai.js` is 30 seconds, which exceeds Netlify's free tier limit. If you experience timeout issues on Netlify:
+
+1. **Option 1: Reduce OpenAI Response Time**
+   - Lower `MAX_TOKENS` in `netlify/functions/analyze.js` (default: 1000, try: 500-750)
+   - Lower `TEMPERATURE` for more deterministic responses (default: 0.7, try: 0.3-0.5)
+   - These changes will make AI responses faster but potentially less detailed
+
+2. **Option 2: Add Custom Timeout Override**
+   - Add `VITE_OPENAI_TIMEOUT` environment variable in Netlify dashboard
+   - Set value to `25000` (25 seconds) to stay within Pro tier limits
+   - The client will use this value instead of the default 30 seconds
+
+3. **Option 3: Upgrade to Netlify Pro**
+   - Increases function timeout to 26 seconds
+   - Provides more headroom for complex package analysis
+
+**No changes needed** to these files for basic deployment, but consider timeout adjustments for production use.
 
 ## Environment Variables
 
-**Required Variable:**
-- `OPENAI_API_KEY`: Your OpenAI API key for AI-powered analysis
+**Required Variables:**
 
-**Important Notes:**
-- Do NOT prefix with `VITE_` (would expose to browser)
-- Used server-side only in `api/analyze.js`
-- Never commit to repository (in .gitignore)
+1. **`OPENAI_API_KEY`** (Server-Side Only)
+   - Your OpenAI API key for AI-powered analysis
+   - Do NOT prefix with `VITE_` (would expose to browser)
+   - Used server-side only in `api/analyze.js` and `netlify/functions/analyze.js`
+   - Never commit to repository (in .gitignore)
+
+2. **`VITE_DEPLOY_PLATFORM`** (Client-Side)
+   - Specifies which serverless function endpoint to use
+   - Values: `vercel` or `netlify`
+   - Default: `vercel` (if unset)
+   - Prefixed with `VITE_` because it's used in browser code
 
 **Setting in Vercel:**
-- Dashboard: Project Settings → Environment Variables → Add variable
-  - Name: `OPENAI_API_KEY`
-  - Value: [Your OpenAI API key]
-  - Environments: Production, Preview, Development (select all)
-- CLI: `vercel env add OPENAI_API_KEY` (then paste your key when prompted)
-
-**Note:** The `vercel.json` file does NOT reference secrets. Environment variables are set directly via the dashboard or CLI and accessed via `process.env.OPENAI_API_KEY` in the serverless function.
+- Dashboard: Project Settings → Environment Variables
+  - Add `OPENAI_API_KEY`:
+    - Name: `OPENAI_API_KEY`
+    - Value: [Your OpenAI API key]
+    - Environments: Production, Preview, Development (select all)
+  - Add `VITE_DEPLOY_PLATFORM`:
+    - Name: `VITE_DEPLOY_PLATFORM`
+    - Value: `vercel`
+    - Environments: Production, Preview, Development (select all)
+- CLI:
+  ```bash
+  vercel env add OPENAI_API_KEY
+  vercel env add VITE_DEPLOY_PLATFORM
+  ```
 
 **Setting in Netlify:**
-- Dashboard: Site Settings → Environment Variables → Add variable
-  - Key: `OPENAI_API_KEY`
-  - Value: [Your OpenAI API key]
-- CLI: `netlify env:set OPENAI_API_KEY your_key`
+- Dashboard: Site Settings → Environment Variables
+  - Add `OPENAI_API_KEY`:
+    - Key: `OPENAI_API_KEY`
+    - Value: [Your OpenAI API key]
+  - Add `VITE_DEPLOY_PLATFORM`:
+    - Key: `VITE_DEPLOY_PLATFORM`
+    - Value: `netlify`
+- CLI:
+  ```bash
+  netlify env:set OPENAI_API_KEY your_key
+  netlify env:set VITE_DEPLOY_PLATFORM netlify
+  ```
+
+**Local Development:**
+- For Vercel: Use `vercel dev` (automatically loads `.env` file)
+- For Netlify: Add `VITE_DEPLOY_PLATFORM=netlify` to `.env` file and run `netlify dev`
 
 ## Troubleshooting
 
@@ -346,6 +429,13 @@ The project includes a Netlify-compatible function at `netlify/functions/analyze
 - Redeploy with `vercel --prod` or `netlify deploy --prod`
 
 ## Post-Deployment Checklist
+
+**Update Documentation with URLs:**
+- [ ] Add deployment URL to README.md (top section)
+- [ ] Add GitHub repository URL to README.md (top section)
+- [ ] Update DEMO_SCRIPT.md with deployment and repository URLs
+- [ ] Update HACKATHON_WRITEUP.md with deployment and repository URLs
+- [ ] Commit and push documentation updates
 
 **Functionality Tests:**
 - [ ] Homepage loads correctly

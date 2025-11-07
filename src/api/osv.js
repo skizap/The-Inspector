@@ -1,5 +1,6 @@
 import axios from 'axios';
 import CVSS from '@turingpointde/cvss.js';
+import { get as cacheGet, set as cacheSet } from '../utils/cache.js';
 
 // Constants
 const OSV_API_URL = 'https://api.osv.dev';
@@ -419,7 +420,18 @@ async function checkVulnerabilities(dependencies, timeout = DEFAULT_TIMEOUT) {
     return [];
   }
 
-  // Step 3: Batching
+  // Step 3: Generate cache key from dependencies (with versions)
+  const sortedKeys = Object.keys(dependencies).sort();
+  const cacheKey = `osv:${sortedKeys.map(name => `${name}@${dependencies[name]}`).join(',')}`;
+  const cachedVulnerabilities = cacheGet(cacheKey);
+  if (cachedVulnerabilities !== null) {
+    console.log('[osv] Cache hit for dependencies');
+    const totalTime = Date.now() - startTime;
+    console.log('[osv] Returned cached vulnerabilities in', totalTime, 'ms. Found', cachedVulnerabilities.length, 'vulnerabilities.');
+    return cachedVulnerabilities;
+  }
+
+  // Step 4: Batching
   const batches = _batchDependencies(dependencies);
   console.log(`[osv] Checking ${depCount} dependencies in ${batches.length} batch(es)`);
 
@@ -592,11 +604,15 @@ async function checkVulnerabilities(dependencies, timeout = DEFAULT_TIMEOUT) {
     return a.package.localeCompare(b.package);
   });
 
-  // Step 11: Success logging
+  // Step 11: Store successful response in cache
+  cacheSet(cacheKey, deduplicatedVulns);
+  console.log('[osv] Cached vulnerability results for', depCount, 'dependencies');
+
+  // Step 12: Success logging
   const totalTime = Date.now() - startTime;
   console.log(`[osv] Successfully checked vulnerabilities in ${totalTime}ms. Found ${deduplicatedVulns.length} vulnerabilities.`);
 
-  // Step 12: Return results
+  // Step 13: Return results
   return deduplicatedVulns;
 }
 

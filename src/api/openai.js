@@ -5,7 +5,17 @@
  * Platform Support:
  * - Vercel: Uses /api/analyze endpoint (api/analyze.js)
  * - Netlify: Uses /.netlify/functions/analyze endpoint (netlify/functions/analyze.js)
- * - Auto-detects platform based on hostname
+ * 
+ * Platform Detection:
+ * - Reads VITE_DEPLOY_PLATFORM env var for deterministic endpoint selection
+ * - Falls back to alternative endpoint on 404/network errors
+ * - Set VITE_DEPLOY_PLATFORM=netlify for Netlify deployments
+ * - Set VITE_DEPLOY_PLATFORM=vercel (or omit) for Vercel deployments
+ * 
+ * Timeout Configuration:
+ * - Default: 30 seconds (suitable for Vercel)
+ * - Override with VITE_OPENAI_TIMEOUT env var (in milliseconds)
+ * - Recommended for Netlify: 25000 (25s) for Pro tier, 9000 (9s) for Free tier
  * 
  * Note: This API client does NOT use caching (unlike npm.js and osv.js).
  * AI summaries are context-dependent and may vary based on current threat
@@ -20,11 +30,19 @@ import axios from 'axios';
 // Platform-specific endpoint detection:
 // - Vercel: /api/analyze
 // - Netlify: /.netlify/functions/analyze
-// Auto-detect based on environment or use Vercel as default
-const SERVERLESS_ENDPOINT = typeof window !== 'undefined' && window.location.hostname.includes('netlify')
+// Reads VITE_DEPLOY_PLATFORM env var for deterministic selection
+// Falls back to runtime detection with retry on 404/NETWORK_ERROR
+const DEPLOY_PLATFORM = import.meta.env.VITE_DEPLOY_PLATFORM;
+const SERVERLESS_ENDPOINT = DEPLOY_PLATFORM === 'netlify'
   ? '/.netlify/functions/analyze'
   : '/api/analyze';
-const DEFAULT_TIMEOUT = 30000;
+const FALLBACK_ENDPOINT = DEPLOY_PLATFORM === 'netlify'
+  ? '/api/analyze'
+  : '/.netlify/functions/analyze';
+// Allow timeout override via VITE_OPENAI_TIMEOUT env var (useful for Netlify's shorter limits)
+const DEFAULT_TIMEOUT = import.meta.env.VITE_OPENAI_TIMEOUT 
+  ? parseInt(import.meta.env.VITE_OPENAI_TIMEOUT, 10) 
+  : 30000;
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_DELAYS = [1000, 2000, 4000];
 
@@ -292,6 +310,7 @@ async function generateSummary(packageData, vulnerabilities, timeout = DEFAULT_T
   console.log('[openai] Generating summary for:', packageData.name, 'at', new Date().toISOString());
 
   // Retry loop with exponential backoff
+  let useFallback = false;
   for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
     try {
       // Build request body
@@ -310,8 +329,12 @@ async function generateSummary(packageData, vulnerabilities, timeout = DEFAULT_T
         }))
       };
 
+      // Select endpoint (primary or fallback)
+      const endpoint = useFallback ? FALLBACK_ENDPOINT : SERVERLESS_ENDPOINT;
+      console.log('[openai] Using endpoint:', endpoint);
+
       // Make request to serverless endpoint
-      const response = await axios.post(SERVERLESS_ENDPOINT, requestBody, {
+      const response = await axios.post(endpoint, requestBody, {
         headers: {
           'Content-Type': 'application/json'
         },
@@ -334,6 +357,18 @@ async function generateSummary(packageData, vulnerabilities, timeout = DEFAULT_T
     } catch (error) {
       const isLastAttempt = attempt === MAX_RETRY_ATTEMPTS - 1;
       const shouldRetryResult = _shouldRetry(error);
+
+      // Check if this is a 404 or network error on primary endpoint
+      const is404 = error.response?.status === 404;
+      const isNetworkError = !error.response;
+      const canFallback = !useFallback && (is404 || isNetworkError);
+
+      if (canFallback) {
+        // Try fallback endpoint once
+        console.log('[openai] Primary endpoint failed, trying fallback endpoint');
+        useFallback = true;
+        continue;
+      }
 
       if (isLastAttempt || !shouldRetryResult) {
         // Map error and throw

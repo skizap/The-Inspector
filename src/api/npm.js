@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { get as cacheGet, set as cacheSet } from '../utils/cache.js';
 
 // Constants
 const NPM_REGISTRY_URL = 'https://registry.npmjs.org';
@@ -219,13 +220,23 @@ async function fetchPackageData(packageName, timeout = DEFAULT_TIMEOUT) {
     : packageName;
   const url = `${NPM_REGISTRY_URL}/${encodedPackageName}`;
 
-  // Step 3: Logging
+  // Step 3: Check cache before API call
+  const cacheKey = `npm:${packageName}`;
+  const cachedData = cacheGet(cacheKey);
+  if (cachedData !== null) {
+    console.log('[npm] Cache hit for package:', packageName);
+    const responseTime = Date.now() - startTime;
+    console.log('[npm] Returned cached data for:', packageName, 'in', responseTime, 'ms');
+    return cachedData;
+  }
+
+  // Step 4: Logging
   console.log('[npm] Fetching package:', packageName, 'at', new Date().toISOString());
 
-  // Step 4: Retry loop with exponential backoff
+  // Step 5: Retry loop with exponential backoff
   for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
     try {
-      // Step 5: Axios request configuration
+      // Step 6: Axios request configuration
       const response = await axios.get(url, {
         timeout,
         headers: {
@@ -233,10 +244,10 @@ async function fetchPackageData(packageName, timeout = DEFAULT_TIMEOUT) {
         }
       });
 
-      // Step 6: Response validation
+      // Step 7: Response validation
       _validateResponse(response.data, packageName);
 
-      // Step 7: Data extraction and normalization
+      // Step 8: Data extraction and normalization
       const latestVersion = response.data['dist-tags'].latest;
       const versionData = response.data.versions[latestVersion];
 
@@ -252,14 +263,18 @@ async function fetchPackageData(packageName, timeout = DEFAULT_TIMEOUT) {
         maintainers: response.data.maintainers || []
       };
 
-      // Step 9: Success logging
+      // Step 9: Store successful response in cache
+      cacheSet(cacheKey, normalizedData);
+      console.log('[npm] Cached response for package:', packageName);
+
+      // Step 10: Success logging
       const responseTime = Date.now() - startTime;
       console.log('[npm] Successfully fetched:', packageName, 'in', responseTime, 'ms');
 
       return normalizedData;
 
     } catch (error) {
-      // Step 8: Error handling
+      // Step 11: Error handling
       const isLastAttempt = attempt === MAX_RETRY_ATTEMPTS - 1;
       const shouldRetry = _shouldRetry(error);
 
@@ -276,5 +291,5 @@ async function fetchPackageData(packageName, timeout = DEFAULT_TIMEOUT) {
   }
 }
 
-// Step 10: Export the function
+// Step 12: Export the function
 export { fetchPackageData };

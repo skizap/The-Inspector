@@ -112,6 +112,17 @@ function _groupVulnerabilitiesBySeverity(vulnerabilities) {
  */
 function _buildUnifiedReport(packageData, vulnerabilities, aiSummary, analysisStartTime) {
   const dependencies = packageData.dependencies || {};
+  const vulnerabilitiesBySeverity = _groupVulnerabilitiesBySeverity(vulnerabilities);
+  
+  // Compute top 3 vulnerabilities (already sorted by severity in vulnerabilities array)
+  const topVulnerabilities = vulnerabilities.slice(0, 3);
+  
+  // Compute severity counts
+  const totalVulns = vulnerabilities.length;
+  const criticalCount = vulnerabilitiesBySeverity.critical.length;
+  const highCount = vulnerabilitiesBySeverity.high.length;
+  const mediumCount = vulnerabilitiesBySeverity.medium.length;
+  const lowCount = vulnerabilitiesBySeverity.low.length;
   
   return {
     packageInfo: {
@@ -127,7 +138,13 @@ function _buildUnifiedReport(packageData, vulnerabilities, aiSummary, analysisSt
       total: Object.keys(dependencies).length
     },
     vulnerabilities: vulnerabilities,
-    vulnerabilitiesBySeverity: _groupVulnerabilitiesBySeverity(vulnerabilities),
+    vulnerabilitiesBySeverity: vulnerabilitiesBySeverity,
+    topVulnerabilities: topVulnerabilities,
+    totalVulns: totalVulns,
+    criticalCount: criticalCount,
+    highCount: highCount,
+    mediumCount: mediumCount,
+    lowCount: lowCount,
     aiSummary: aiSummary,
     metadata: {
       analyzedAt: new Date().toISOString(),

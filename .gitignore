@@ -20,6 +20,14 @@ dist-ssr
 # Kiro settings (contains API keys and tokens)
 .kiro/settings/
 
+# Kiro hook state files (auto-generated, not committed)
+.kiro/hooks/.dependency-state.json
+.kiro/hooks/.security-alerts.json
+
+# Note: .kiro/ directory is intentionally NOT ignored
+# It must be committed for hackathon submission requirements
+# Only specific state files within .kiro/hooks/ are ignored
+
 # Vercel CLI cache
 .vercel
 

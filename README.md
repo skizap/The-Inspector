@@ -1,5 +1,9 @@
 # The Inspector - Package Analysis Tool
 
+> **🚀 Live Demo:** [Add your deployment URL here after deploying]
+> 
+> **📦 Repository:** [Add your GitHub repository URL here]
+
 ## Description
 
 The Inspector is a developer utility that acts as an "X-ray" for open-source npm packages. Before installing any package, developers can use The Inspector to generate a comprehensive "Nutrition Label" report that reveals hidden dependencies, security vulnerabilities, license restrictions, and overall complexity. This tool promotes informed decision-making and better security practices in the JavaScript ecosystem.
@@ -122,9 +126,11 @@ The hook automatically triggers after a 2-second debounce. Check `dependency_aud
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone [your-repository-url]
 cd the-inspector
 ```
+
+Replace `[your-repository-url]` with your actual GitHub repository URL.
 
 2. Install dependencies:
 ```bash

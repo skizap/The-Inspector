@@ -24,9 +24,9 @@ Kiroween 2024 - Frankenstein Category
 
 **Lines of Code:** ~3,500 lines across 20+ files
 
-**Repository:** [GitHub URL]
+**Repository:** [Add your GitHub repository URL after creating the repository]
 
-**Live Demo:** [Deployment URL]
+**Live Demo:** [Add your deployment URL after deploying to Vercel/Netlify]
 
 ## How Kiro Was Used
 
@@ -573,9 +573,9 @@ Kiro IDE is not just a code generator—it's a development partner that understa
 ---
 
 **Project Links:**
-- **GitHub Repository:** [URL]
-- **Live Demo:** [URL]
-- **Demo Video:** [YouTube/Vimeo URL]
+- **GitHub Repository:** [Add your GitHub repository URL]
+- **Live Demo:** [Add your deployment URL]
+- **Demo Video:** [Add your YouTube/Vimeo URL after recording]
 - **Kiro IDE:** https://kiro.ai
 
 **Contact:**

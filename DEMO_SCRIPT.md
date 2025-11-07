@@ -194,8 +194,8 @@ Thank you!
 **On-Screen Text:**
 - "The Inspector"
 - "Built with Kiro IDE"
-- "GitHub: [repository-url]"
-- "Live Demo: [deployment-url]"
+- "GitHub: [Add your GitHub repository URL]"
+- "Live Demo: [Add your deployment URL]"
 
 ---
 
@@ -230,8 +230,8 @@ Thank you!
 5. Production-ready in 10 days (67% time reduction)
 
 ### Call to Action
-- Visit the live demo at [deployment-url]
-- View source code on GitHub at [repository-url]
+- Visit the live demo at [Add your deployment URL]
+- View source code on GitHub at [Add your GitHub repository URL]
 - Try analyzing your own packages
 
 ### Upload Platforms
