@@ -120,6 +120,25 @@ function _validateResponse(data) {
     throw new Error('Invalid AI response: complexityAssessment must be a non-empty string');
   }
 
+  // Optional maintenance fields validation (backward compatible)
+  if (summary.maintenanceStatus !== undefined) {
+    const validMaintenanceStatuses = ['Active', 'Stale', 'Abandoned', 'Unknown'];
+    if (!validMaintenanceStatuses.includes(summary.maintenanceStatus)) {
+      throw new Error(`Invalid AI response: maintenanceStatus must be one of ${validMaintenanceStatuses.join(', ')}`);
+    }
+  }
+
+  if (summary.licenseCompatibility !== undefined) {
+    const validLicenseTypes = ['Permissive', 'Copyleft', 'Proprietary', 'Unknown'];
+    if (!validLicenseTypes.includes(summary.licenseCompatibility)) {
+      throw new Error(`Invalid AI response: licenseCompatibility must be one of ${validLicenseTypes.join(', ')}`);
+    }
+  }
+
+  if (summary.maintenanceNotes !== undefined && typeof summary.maintenanceNotes !== 'string') {
+    throw new Error('Invalid AI response: maintenanceNotes must be a string');
+  }
+
   return true;
 }
 
@@ -319,7 +338,9 @@ async function generateSummary(packageData, vulnerabilities, timeout = DEFAULT_T
           name: packageData.name,
           version: packageData.version,
           dependencies: packageData.dependencies,
-          license: packageData.license
+          license: packageData.license,
+          lastPublishDate: packageData.lastPublishDate || null,
+          githubStats: packageData.githubStats || null
         },
         vulnerabilities: vulnerabilities.map(v => ({
           package: v.package,

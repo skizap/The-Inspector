@@ -25,13 +25,21 @@ Your response must be in JSON format with the following structure:
   "riskLevel": "Low|Medium|High|Critical",
   "concerns": ["concern1", "concern2", ...],
   "recommendations": ["recommendation1", "recommendation2", ...],
-  "complexityAssessment": "paragraph describing dependency complexity"
+  "complexityAssessment": "paragraph describing dependency complexity",
+  "maintenanceStatus": "Active|Stale|Abandoned|Unknown",
+  "licenseCompatibility": "Permissive|Copyleft|Proprietary|Unknown",
+  "maintenanceNotes": "brief note about maintenance status and license implications"
 }
 
 - riskLevel must be one of: Low, Medium, High, Critical
 - concerns must be an array of 2-5 key security concern strings
 - recommendations must be an array of 2-5 actionable recommendation strings
-- complexityAssessment must be a single paragraph describing dependency complexity`;
+- complexityAssessment must be a single paragraph describing dependency complexity
+- maintenanceStatus: Active (updated within 1 year), Stale (1-2 years), Abandoned (>2 years), Unknown
+- licenseCompatibility: Permissive (MIT/Apache/BSD), Copyleft (GPL/LGPL), Proprietary, Unknown
+- maintenanceNotes: brief assessment of maintenance health and license implications
+
+Consider open issues count as indicator of active maintenance.`;
 }
 
 /**
@@ -110,6 +118,25 @@ Vulnerabilities: ${severityCounts.Critical} Critical, ${severityCounts.High} Hig
 
   prompt += `\nLicense: ${packageData.license || 'Unknown'}`;
 
+  // Add maintenance information
+  if (packageData.lastPublishDate) {
+    const daysAgo = Math.floor((Date.now() - new Date(packageData.lastPublishDate)) / (1000 * 60 * 60 * 24));
+    const publishDate = new Date(packageData.lastPublishDate).toLocaleDateString();
+    prompt += `\nLast Published: ${daysAgo} days ago (${publishDate})`;
+    
+    // Add staleness warnings
+    if (daysAgo > 730) {
+      prompt += '\n⚠️ Package has not been updated in over 2 years (potentially abandoned)';
+    } else if (daysAgo > 365) {
+      prompt += '\n⚠️ Package has not been updated in over 1 year';
+    }
+  }
+
+  // Add GitHub stats if available
+  if (packageData.githubStats?.openIssues !== undefined) {
+    prompt += `\nOpen Issues: ${packageData.githubStats.openIssues}`;
+  }
+
   return prompt;
 }
 
@@ -151,6 +178,23 @@ function _parseAIResponse(content) {
   // Validate complexityAssessment
   if (typeof parsed.complexityAssessment !== 'string' || parsed.complexityAssessment.trim() === '') {
     throw new Error('Invalid complexityAssessment: must be non-empty string');
+  }
+
+  // Validate maintenanceStatus
+  const validMaintenanceStatuses = ['Active', 'Stale', 'Abandoned', 'Unknown'];
+  if (parsed.maintenanceStatus && !validMaintenanceStatuses.includes(parsed.maintenanceStatus)) {
+    throw new Error(`Invalid maintenanceStatus: ${parsed.maintenanceStatus}`);
+  }
+
+  // Validate licenseCompatibility
+  const validLicenseTypes = ['Permissive', 'Copyleft', 'Proprietary', 'Unknown'];
+  if (parsed.licenseCompatibility && !validLicenseTypes.includes(parsed.licenseCompatibility)) {
+    throw new Error(`Invalid licenseCompatibility: ${parsed.licenseCompatibility}`);
+  }
+
+  // Validate maintenanceNotes
+  if (parsed.maintenanceNotes && typeof parsed.maintenanceNotes !== 'string') {
+    throw new Error('Invalid maintenanceNotes: must be a string');
   }
 
   return parsed;

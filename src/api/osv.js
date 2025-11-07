@@ -394,7 +394,33 @@ function _extractVulnerabilityData(vulnDetail, packageName) {
 }
 
 /**
+ * Generates cache key from dependencies object
+ * For large dependency lists (>5000 chars), uses hash instead of full key
+ * @param {Object} dependencies - Dependencies object with package names as keys and versions as values
+ * @returns {string} Cache key for OSV API results
+ * @private
+ */
+function _generateCacheKey(dependencies) {
+  const sortedKeys = Object.keys(dependencies).sort();
+  const keyString = sortedKeys.map(name => `${name}@${dependencies[name]}`).join(',');
+  
+  // If key is too long, use hash
+  if (keyString.length > 5000) {
+    let hash = 0;
+    for (let i = 0; i < keyString.length; i++) {
+      hash = ((hash << 5) - hash) + keyString.charCodeAt(i);
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return `osv:hash:${Math.abs(hash)}`;
+  }
+  
+  return `osv:${keyString}`;
+}
+
+/**
  * Checks for security vulnerabilities in npm package dependencies using OSV API
+ * Supports both direct and transitive dependencies (combined map)
+ * Handles large dependency lists (1000+) with automatic batching
  * @param {Object} dependencies - Dependencies object with package names as keys and versions as values
  * @param {number} [timeout=30000] - Request timeout in milliseconds
  * @returns {Promise<Array<Object>>} Array of vulnerability objects with package, id, severity, cvssScore, summary, details, references
@@ -421,8 +447,7 @@ async function checkVulnerabilities(dependencies, timeout = DEFAULT_TIMEOUT) {
   }
 
   // Step 3: Generate cache key from dependencies (with versions)
-  const sortedKeys = Object.keys(dependencies).sort();
-  const cacheKey = `osv:${sortedKeys.map(name => `${name}@${dependencies[name]}`).join(',')}`;
+  const cacheKey = _generateCacheKey(dependencies);
   const cachedVulnerabilities = cacheGet(cacheKey);
   if (cachedVulnerabilities !== null) {
     console.log('[osv] Cache hit for dependencies');
@@ -433,7 +458,7 @@ async function checkVulnerabilities(dependencies, timeout = DEFAULT_TIMEOUT) {
 
   // Step 4: Batching
   const batches = _batchDependencies(dependencies);
-  console.log(`[osv] Checking ${depCount} dependencies in ${batches.length} batch(es)`);
+  console.log(`[osv] Checking ${depCount} dependencies (direct + transitive) in ${batches.length} batch(es)`);
 
   const allVulnerabilities = [];
   const vulnIdToPackages = new Map();

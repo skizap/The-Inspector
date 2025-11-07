@@ -52,6 +52,40 @@ function NutritionLabel({ report }) {
     }
   };
 
+  const getMaintenanceStatusColor = (status) => {
+    switch (status) {
+      case 'Active':
+        return '#22C55E'; // Green
+      case 'Stale':
+        return '#CA8A04'; // Yellow
+      case 'Abandoned':
+        return '#DC2626'; // Red
+      case 'Unknown':
+      default:
+        return 'var(--color-secondary)'; // Gray
+    }
+  };
+
+  const formatDaysSincePublish = (isoDate) => {
+    if (!isoDate) return 'N/A';
+    
+    try {
+      const days = Math.floor((Date.now() - new Date(isoDate)) / (1000 * 60 * 60 * 24));
+      
+      if (days < 30) {
+        return `${days} days ago`;
+      } else if (days < 365) {
+        const months = Math.floor(days / 30);
+        return `${months} month${months > 1 ? 's' : ''} ago`;
+      } else {
+        const years = Math.floor(days / 365);
+        return `${years} year${years > 1 ? 's' : ''} ago`;
+      }
+    } catch (error) {
+      return 'N/A';
+    }
+  };
+
   if (!report) return null;
 
   // Safe vulnerability count
@@ -84,7 +118,61 @@ function NutritionLabel({ report }) {
         </p>
       </section>
 
-      {/* Section 2: Dependencies */}
+      {/* Section 2: License & Maintenance */}
+      <section className="nutrition-section license-maintenance">
+        <h3>License & Maintenance</h3>
+        
+        {/* License Information */}
+        <div className="license-info">
+          <h4>License</h4>
+          <div className="license-type">{report.packageInfo?.license || 'Unknown'}</div>
+          {report.maintenanceInfo?.licenseCompatibility && (
+            <p className="license-compatibility">
+              Type: {report.maintenanceInfo.licenseCompatibility}
+            </p>
+          )}
+        </div>
+
+        {/* Maintenance Status */}
+        <div className="maintenance-status" style={{ marginTop: 'var(--spacing-md)' }}>
+          <h4>Maintenance Status</h4>
+          <div 
+            className="status-badge"
+            style={{ 
+              backgroundColor: getMaintenanceStatusColor(report.maintenanceInfo?.maintenanceStatus),
+              color: 'white',
+              padding: 'var(--spacing-xs) var(--spacing-sm)',
+              borderRadius: 'var(--radius-sm)',
+              display: 'inline-block'
+            }}
+          >
+            {report.maintenanceInfo?.maintenanceStatus || 'Unknown'}
+          </div>
+          
+          {/* Last Publish Date */}
+          {report.maintenanceInfo?.lastPublishDate && (
+            <p className="text-muted" style={{ marginTop: 'var(--spacing-xs)' }}>
+              Last published: {formatDaysSincePublish(report.maintenanceInfo.lastPublishDate)}
+            </p>
+          )}
+          
+          {/* GitHub Stats */}
+          {report.maintenanceInfo?.githubStats?.openIssues !== undefined && (
+            <p className="text-muted" style={{ marginTop: 'var(--spacing-xs)' }}>
+              Open issues/PRs: {report.maintenanceInfo.githubStats.openIssues}
+            </p>
+          )}
+          
+          {/* Maintenance Notes from AI */}
+          {report.maintenanceInfo?.maintenanceNotes && (
+            <p style={{ marginTop: 'var(--spacing-sm)' }}>
+              {report.maintenanceInfo.maintenanceNotes}
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* Section 3: Dependencies */}
       <section className="nutrition-section dependencies">
         <h3>Dependencies</h3>
         <div className="stat-large">{report.dependencyTree?.total || 0}</div>
@@ -102,7 +190,7 @@ function NutritionLabel({ report }) {
         )}
       </section>
 
-      {/* Section 3: Vulnerabilities */}
+      {/* Section 4: Vulnerabilities */}
       <section className="nutrition-section vulnerabilities">
         <h3>Security Vulnerabilities</h3>
         <div className="stat-large">{vulnCount}</div>
@@ -186,7 +274,7 @@ function NutritionLabel({ report }) {
         )}
       </section>
 
-      {/* Section 4: AI Summary */}
+      {/* Section 5: AI Summary */}
       <section className="nutrition-section ai-summary">
         <h3>AI-Powered Analysis</h3>
         {!report.aiSummary ? (
@@ -234,7 +322,7 @@ function NutritionLabel({ report }) {
         )}
       </section>
 
-      {/* Section 5: Metadata */}
+      {/* Section 6: Metadata */}
       <footer className="nutrition-footer">
         <ExportButton report={report} />
         <div style={{ marginBottom: 'var(--spacing-md)' }}></div>
