@@ -1,0 +1,204 @@
+{
+  "name": "Dependency Auditor",
+  "description": "Automatically analyzes newly added npm dependencies for security vulnerabilities and appends results to dependency_audit.md",
+  "version": "1.0.0",
+  "enabled": true,
+  "trigger": {
+    "type": "onFileSave",
+    "filePattern": "package.json",
+    "watchPaths": ["./package.json"],
+    "debounce": 2000
+  },
+  "configuration": {
+    "maxConcurrentAnalyses": 3,
+    "skipDevDependencies": false,
+    "alertThreshold": "High",
+    "auditLogPath": "./dependency_audit.md",
+    "stateFilePath": "./.kiro/hooks/.dependency-state.json"
+  },
+  "permissions": {
+    "readFiles": ["package.json", ".kiro/hooks/.dependency-state.json"],
+    "writeFiles": ["dependency_audit.md", ".kiro/hooks/.dependency-state.json", ".kiro/hooks/.security-alerts.json"],
+    "executeCommands": false,
+    "networkAccess": true
+  },
+  "workflow": [
+    {
+      "step": 1,
+      "name": "Parse Current package.json - Extract dependencies",
+      "action": "readFile",
+      "file": "package.json",
+      "parseAs": "json",
+      "extractField": "dependencies",
+      "storeAs": "prodDependencies",
+      "errorHandling": {
+        "onError": "logAndExit",
+        "message": "Failed to parse package.json dependencies"
+      }
+    },
+    {
+      "step": 2,
+      "name": "Parse Current package.json - Extract devDependencies",
+      "action": "readFile",
+      "file": "package.json",
+      "parseAs": "json",
+      "extractField": "devDependencies",
+      "storeAs": "devDependencies",
+      "errorHandling": {
+        "onError": "setEmpty",
+        "message": "No devDependencies found"
+      }
+    },
+    {
+      "step": 3,
+      "name": "Merge dependencies based on skipDevDependencies config",
+      "action": "conditional",
+      "condition": "{{config.skipDevDependencies}}",
+      "operations": [
+        {
+          "action": "set",
+          "variable": "currentDependencies",
+          "value": "{{prodDependencies}}"
+        }
+      ],
+      "else": [
+        {
+          "action": "merge",
+          "objects": ["{{prodDependencies}}", "{{devDependencies}}"],
+          "storeAs": "currentDependencies"
+        }
+      ]
+    },
+    {
+      "step": 4,
+      "name": "Load Previous Dependencies State",
+      "action": "readFile",
+      "file": ".kiro/hooks/.dependency-state.json",
+      "parseAs": "json",
+      "storeAs": "previousDependencies",
+      "errorHandling": {
+        "onError": "createInitialState",
+        "initialState": {
+          "dependencies": "{{currentDependencies}}",
+          "lastUpdated": "{{timestamp}}"
+        },
+        "message": "First run - creating initial state file"
+      }
+    },
+    {
+      "step": 5,
+      "name": "Identify New Dependencies",
+      "action": "compare",
+      "current": "{{currentDependencies}}",
+      "previous": "{{previousDependencies.dependencies}}",
+      "operation": "findNewKeys",
+      "storeAs": "newDependencies",
+      "logging": {
+        "onEmpty": "No new dependencies detected",
+        "onFound": "Found {{count}} new dependencies: {{names}}"
+      },
+      "exitIf": "empty"
+    },
+    {
+      "step": 6,
+      "name": "Analyze Each New Dependency",
+      "action": "forEach",
+      "array": "{{newDependencies}}",
+      "concurrency": 3,
+      "operation": {
+        "call": "inspectPackage",
+        "module": "src/utils/inspector.js",
+        "args": ["{{item}}"],
+        "storeResultIn": "analysisResults"
+      },
+      "logging": {
+        "progress": "Analyzing {{current}}/{{total}}: {{item}}"
+      },
+      "errorHandling": {
+        "onError": "logAndContinue",
+        "message": "Failed to analyze {{item}}"
+      }
+    },
+    {
+      "step": 7,
+      "name": "Compute Global Severity Counts",
+      "action": "aggregate",
+      "array": "{{analysisResults}}",
+      "operations": {
+        "criticalCount": "{{sum criticalCount}}",
+        "highCount": "{{sum highCount}}",
+        "criticalHighCount": "{{sum criticalCount highCount}}",
+        "hasCriticalOrHigh": "{{criticalHighCount > 0}}"
+      },
+      "storeAs": "globalCounts"
+    },
+    {
+      "step": 8,
+      "name": "Generate Audit Report",
+      "action": "formatMarkdown",
+      "template": "## {{packageInfo.name}} v{{packageInfo.version}}\n\n**Analyzed:** {{metadata.analyzedAt}}\n\n{{#if aiSummary}}\n**Risk Level:** {{riskEmoji aiSummary.riskLevel}} {{aiSummary.riskLevel}}\n{{else}}\n**Risk Level:** N/A (AI summary unavailable)\n{{/if}}\n\n**Vulnerabilities:** {{totalVulns}} ({{criticalCount}} Critical, {{highCount}} High, {{mediumCount}} Medium, {{lowCount}} Low)\n\n{{#if topVulnerabilities.length}}\n### Top Vulnerabilities\n{{#each topVulnerabilities}}\n- **{{id}}** ({{severity}}): {{summary}}\n{{/each}}\n{{/if}}\n\n{{#if aiSummary}}\n### AI Assessment\n\n**Concerns:**\n{{#each aiSummary.concerns}}\n- {{this}}\n{{/each}}\n\n**Recommendations:**\n{{#each aiSummary.recommendations}}\n- {{this}}\n{{/each}}\n{{else}}\n### AI Assessment\n\nAI summary unavailable for this analysis.\n{{/if}}\n\n---\n\n",
+      "data": "{{analysisResults}}",
+      "storeAs": "formattedReport",
+      "helpers": {
+        "riskEmoji": {
+          "Critical": "🔴",
+          "High": "🟠",
+          "Medium": "🟡",
+          "Low": "🟢"
+        }
+      }
+    },
+    {
+      "step": 9,
+      "name": "Append to Audit Log",
+      "action": "appendFile",
+      "file": "{{config.auditLogPath}}",
+      "content": "{{formattedReport}}",
+      "createIfMissing": true,
+      "header": "# Dependency Audit Log\n\nAutomatically generated by The Inspector's Dependency Auditor hook.\n\n",
+      "ensureNewline": true
+    },
+    {
+      "step": 10,
+      "name": "Alert on Critical/High Vulnerabilities",
+      "action": "conditional",
+      "condition": "{{globalCounts.hasCriticalOrHigh}}",
+      "operations": [
+        {
+          "action": "notify",
+          "level": "warning",
+          "message": "⚠️ SECURITY ALERT: {{globalCounts.criticalHighCount}} Critical/High vulnerabilities found in new dependencies. Review dependency_audit.md for details."
+        },
+        {
+          "action": "writeFile",
+          "file": ".kiro/hooks/.security-alerts.json",
+          "content": {
+            "timestamp": "{{timestamp}}",
+            "dependencies": "{{newDependencies}}",
+            "criticalCount": "{{globalCounts.criticalCount}}",
+            "highCount": "{{globalCounts.highCount}}",
+            "totalVulnerabilities": "{{globalCounts.criticalHighCount}}"
+          }
+        }
+      ],
+      "logging": {
+        "onTrue": "Security alert triggered for {{globalCounts.criticalHighCount}} vulnerabilities",
+        "onFalse": "No critical or high vulnerabilities found"
+      }
+    },
+    {
+      "step": 11,
+      "name": "Update State File",
+      "action": "writeFile",
+      "file": "{{config.stateFilePath}}",
+      "content": {
+        "dependencies": "{{currentDependencies}}",
+        "lastUpdated": "{{timestamp}}"
+      },
+      "atomic": true,
+      "logging": {
+        "message": "Updated dependency state file"
+      }
+    }
+  ]
+}

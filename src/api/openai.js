@@ -1,12 +1,29 @@
 /**
  * OpenAI API client that calls the serverless proxy endpoint.
  * This client follows the same architectural patterns as npm.js and osv.js.
+ * 
+ * Platform Support:
+ * - Vercel: Uses /api/analyze endpoint (api/analyze.js)
+ * - Netlify: Uses /.netlify/functions/analyze endpoint (netlify/functions/analyze.js)
+ * - Auto-detects platform based on hostname
+ * 
+ * Note: This API client does NOT use caching (unlike npm.js and osv.js).
+ * AI summaries are context-dependent and may vary based on current threat
+ * landscape, model improvements, and analysis context. Fresh analysis
+ * provides more value than cached stale summaries.
+ * See design.md lines 221-222 for rationale.
  */
 
 import axios from 'axios';
 
 // Constants
-const SERVERLESS_ENDPOINT = '/api/analyze';
+// Platform-specific endpoint detection:
+// - Vercel: /api/analyze
+// - Netlify: /.netlify/functions/analyze
+// Auto-detect based on environment or use Vercel as default
+const SERVERLESS_ENDPOINT = typeof window !== 'undefined' && window.location.hostname.includes('netlify')
+  ? '/.netlify/functions/analyze'
+  : '/api/analyze';
 const DEFAULT_TIMEOUT = 30000;
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_DELAYS = [1000, 2000, 4000];
