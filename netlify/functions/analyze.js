@@ -4,6 +4,7 @@
  */
 
 import axios from 'axios';
+import { VALID_OPENROUTER_MODELS } from '../../src/constants/openrouterModels.js';
 
 // Constants
 // Note: baseURL and model are determined dynamically based on provider
@@ -354,16 +355,19 @@ export async function handler(event) {
     modelToUse = provider === 'openrouter' ? 'moonshotai/kimi-k2-thinking' : 'gpt-4o';
   }
 
+  // Normalize model name (trim whitespace and convert to lowercase)
+  modelToUse = modelToUse.trim().toLowerCase();
+
   // Validate model compatibility with provider
   if (provider === 'openrouter') {
-    // Check if using a plain OpenAI model name without vendor prefix
-    const plainOpenAIModels = ['gpt-4o', 'gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo'];
-    if (plainOpenAIModels.includes(modelToUse)) {
+    // Check if model is in the whitelist of valid OpenRouter models
+    if (!VALID_OPENROUTER_MODELS.includes(modelToUse)) {
+      console.error('[netlify] Invalid or unsupported OpenRouter model requested:', modelToUse);
       return {
         statusCode: 400,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          error: `Model '${modelToUse}' is not compatible with OpenRouter. Use OpenRouter model format (e.g., 'openai/gpt-4o' or 'moonshotai/kimi-k2-thinking').` 
+          error: `Model '${modelToUse}' is not a valid or supported OpenRouter model for this application. Please select a model from the dropdown in the UI.` 
         })
       };
     }

@@ -1,20 +1,8 @@
 import React, { useState } from 'react';
 import { inspectPackage } from '../utils/inspector.js';
+import { MODEL_OPTIONS } from '../config/models.js';
 import ErrorMessage from './ErrorMessage.jsx';
 import LoadingSpinner from './LoadingSpinner.jsx';
-
-// Model options for AI analysis
-const MODEL_OPTIONS = [
-  { value: 'openai/gpt-5-codex', label: 'GPT-5 Codex (Recommended)' },
-  { value: 'anthropic/claude-sonnet-4.5', label: 'Claude Sonnet 4.5' },
-  { value: 'openai/gpt-5', label: 'GPT-5' },
-  { value: 'anthropic/claude-haiku-4.5', label: 'Claude Haiku 4.5' },
-  { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
-  { value: 'deepseek/deepseek-chat', label: 'DeepSeek Chat V3' },
-  { value: 'moonshotai/kimi-k2-thinking', label: 'Moonshot Kimi K2 Thinking' },
-  { value: 'deepseek/deepseek-r1-distill-llama-70b:free', label: 'DeepSeek R1 Distill 70B (Free)' },
-  { value: 'google/gemini-2.0-flash-exp:free', label: 'Google Gemini 2.0 Flash Exp (Free)' }
-];
 
 // Popular npm packages for quick testing
 const EXAMPLE_PACKAGES = ['react', 'lodash', 'express', 'axios', 'typescript', 'webpack'];

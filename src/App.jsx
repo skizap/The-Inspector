@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import InspectorForm from './components/InspectorForm';
 import NutritionLabel from './components/NutritionLabel';
 import Settings from './components/Settings';
+import { DEFAULT_MODEL } from './config/models.js';
 import './styles/App.css';
 
 // Constants
-const DEFAULT_MODEL = 'openai/gpt-5-codex';
 const LS_MODEL_KEY = 'inspector-selected-model';
 
 /**
