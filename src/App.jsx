@@ -11,6 +11,7 @@ export default function App() {
   // State declarations
   const [report, setReport] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('moonshotai/kimi-k2-thinking');
 
   // Event handlers
   const handleAnalysisStart = () => {
@@ -36,6 +37,11 @@ export default function App() {
     }, 100);
   };
 
+  const handleModelChange = (model) => {
+    setSelectedModel(model);
+    console.log('[App] Model changed to:', model);
+  };
+
   return (
     <div className="app">
       <header className="app-header">
@@ -46,6 +52,8 @@ export default function App() {
         <InspectorForm
           onAnalysisStart={handleAnalysisStart}
           onAnalysisComplete={handleAnalysisComplete}
+          selectedModel={selectedModel}
+          onModelChange={handleModelChange}
         />
         {report && <NutritionLabel report={report} />}
       </main>

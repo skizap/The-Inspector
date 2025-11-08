@@ -1,14 +1,13 @@
 /**
- * Serverless function that acts as a secure proxy for OpenAI API calls.
- * This function runs server-side where the OpenAI API key can be safely accessed
+ * Serverless function that acts as a secure proxy for AI API calls (OpenAI and OpenRouter).
+ * This function runs server-side where AI API keys can be safely accessed
  * from environment variables without exposure to the browser.
  */
 
 import axios from 'axios';
 
 // Constants
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-const OPENAI_MODEL = 'gpt-4o';
+// Note: baseURL and model are determined dynamically based on provider
 const DEFAULT_TIMEOUT = 30000;
 const MAX_TOKENS = 1000;
 const TEMPERATURE = 0.7;
@@ -206,14 +205,6 @@ function _parseAIResponse(content) {
  * @param {Object} res - HTTP response object
  */
 export default async function handler(req, res) {
-  // Validate environment variable
-  if (!process.env.OPENAI_API_KEY) {
-    console.error('[serverless] OPENAI_API_KEY environment variable not set');
-    return res.status(500).json({ 
-      error: 'Server configuration error: OPENAI_API_KEY not set' 
-    });
-  }
-
   // Validate request method
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed. Use POST.' });
@@ -225,8 +216,68 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Content-Type must be application/json' });
   }
 
+  // Determine AI provider with backward compatibility
+  let provider = process.env.VITE_AI_PROVIDER;
+  
+  // Normalize provider to avoid case/whitespace configuration pitfalls
+  provider = (provider || '').trim().toLowerCase();
+  
+  // Backward compatibility: default to 'openai' if VITE_AI_PROVIDER not set but OPENAI_API_KEY exists
+  if (!provider && process.env.OPENAI_API_KEY) {
+    provider = 'openai';
+  }
+
+  // Validate provider value
+  if (provider && provider !== 'openai' && provider !== 'openrouter') {
+    console.error('[serverless] Unsupported VITE_AI_PROVIDER value:', provider);
+    return res.status(500).json({ 
+      error: 'Server configuration error: unsupported VITE_AI_PROVIDER value' 
+    });
+  }
+
+  // Configure provider-specific settings
+  let baseURL;
+  let apiKey;
+  let headers;
+
+  if (provider === 'openrouter') {
+    // Validate OpenRouter API key
+    if (!process.env.OPENROUTER_API_KEY) {
+      console.error('[serverless] OPENROUTER_API_KEY environment variable not set');
+      return res.status(500).json({ 
+        error: 'Server configuration error: OPENROUTER_API_KEY is not set' 
+      });
+    }
+
+    baseURL = 'https://openrouter.ai/api/v1/chat/completions';
+    apiKey = process.env.OPENROUTER_API_KEY;
+    headers = {
+      'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': process.env.VITE_SITE_URL || '',
+      'X-Title': process.env.VITE_SITE_NAME || 'The Inspector',
+      'Content-Type': 'application/json'
+    };
+  } else {
+    // Default to OpenAI
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('[serverless] OPENAI_API_KEY environment variable not set');
+      return res.status(500).json({ 
+        error: 'Server configuration error: OPENAI_API_KEY not set' 
+      });
+    }
+
+    baseURL = 'https://api.openai.com/v1/chat/completions';
+    apiKey = process.env.OPENAI_API_KEY;
+    headers = {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    };
+  }
+
+  console.log('[serverless] Using AI provider:', provider);
+
   // Parse and validate request body
-  const { packageData, vulnerabilities } = req.body;
+  const { packageData, vulnerabilities, model: requestedModel } = req.body;
 
   if (!packageData || typeof packageData !== 'object') {
     return res.status(400).json({ error: 'Invalid request: packageData is required' });
@@ -244,29 +295,49 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid request: vulnerabilities must be an array' });
   }
 
+  // Determine model to use
+  let modelToUse;
+  if (requestedModel) {
+    modelToUse = requestedModel;
+  } else if (process.env.VITE_DEFAULT_MODEL) {
+    modelToUse = process.env.VITE_DEFAULT_MODEL;
+  } else {
+    // Provider-specific defaults
+    modelToUse = provider === 'openrouter' ? 'moonshotai/kimi-k2-thinking' : 'gpt-4o';
+  }
+
+  // Validate model compatibility with provider
+  if (provider === 'openrouter') {
+    // Check if using a plain OpenAI model name without vendor prefix
+    const plainOpenAIModels = ['gpt-4o', 'gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo'];
+    if (plainOpenAIModels.includes(modelToUse)) {
+      return res.status(400).json({ 
+        error: `Model '${modelToUse}' is not compatible with OpenRouter. Use OpenRouter model format (e.g., 'openai/gpt-4o' or 'moonshotai/kimi-k2-thinking').` 
+      });
+    }
+  }
+
   console.log('[serverless] Analyzing package:', packageData.name);
+  console.log('[serverless] Using model:', modelToUse);
 
   try {
-    // Build OpenAI request
+    // Build AI request
     const messages = [
       { role: 'system', content: _buildSystemPrompt() },
       { role: 'user', content: _buildUserPrompt(packageData, vulnerabilities) }
     ];
 
     const requestBody = {
-      model: OPENAI_MODEL,
+      model: modelToUse,
       messages: messages,
       temperature: TEMPERATURE,
       max_tokens: MAX_TOKENS,
       response_format: { type: 'json_object' }
     };
 
-    // Make OpenAI API call
-    const response = await axios.post(OPENAI_API_URL, requestBody, {
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
+    // Make AI API call
+    const response = await axios.post(baseURL, requestBody, {
+      headers: headers,
       timeout: DEFAULT_TIMEOUT
     });
 
@@ -288,7 +359,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ summary: parsedSummary });
 
   } catch (error) {
-    console.error('[serverless] OpenAI error:', error.message);
+    console.error('[serverless] AI API error:', error.message);
 
     // Handle specific error types
     if (error.response) {
@@ -296,7 +367,7 @@ export default async function handler(req, res) {
 
       if (status === 401) {
         return res.status(401).json({ 
-          error: 'OpenAI API authentication failed. Please check server configuration.' 
+          error: `${provider} API authentication failed. Please check server configuration.` 
         });
       }
 
@@ -307,13 +378,13 @@ export default async function handler(req, res) {
           res.setHeader('Retry-After', retryAfter);
         }
         return res.status(429).json({ 
-          error: 'OpenAI rate limit exceeded. Please try again in a moment.' 
+          error: 'AI API rate limit exceeded. Please try again in a moment.' 
         });
       }
 
       if (status >= 500) {
         return res.status(502).json({ 
-          error: 'OpenAI API temporarily unavailable. Please try again.' 
+          error: 'AI API temporarily unavailable. Please try again.' 
         });
       }
     }
@@ -321,14 +392,14 @@ export default async function handler(req, res) {
     // Handle timeout
     if (error.code === 'ECONNABORTED') {
       return res.status(504).json({ 
-        error: 'OpenAI request timed out. Please try again.' 
+        error: 'AI request timed out. Please try again.' 
       });
     }
 
     // Handle network errors
     if (!error.response) {
       return res.status(502).json({ 
-        error: 'Failed to connect to OpenAI API.' 
+        error: 'Failed to connect to AI API.' 
       });
     }
 

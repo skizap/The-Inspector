@@ -1,6 +1,6 @@
 import { fetchPackageData, fetchTransitiveDependencies, resolveVersionFromRange } from '../api/npm.js';
 import { checkVulnerabilities } from '../api/osv.js';
-import { generateSummary } from '../api/openai.js';
+import { generateSummary } from '../api/ai.js';
 
 // Constants
 const DEFAULT_TIMEOUT = 30000; // 30 seconds, consistent with API clients
@@ -187,19 +187,20 @@ function _buildUnifiedReport(packageData, directDependencies, transitiveDependen
 }
 
 /**
- * Orchestrates package analysis by coordinating npm, OSV, and OpenAI API calls
+ * Orchestrates package analysis by coordinating npm, OSV, and AI API calls
  * to generate a comprehensive report
  * @param {string} packageName - The npm package name to analyze (supports scoped packages like @scope/name)
+ * @param {string} [model=null] - Optional AI model to use for analysis (e.g., 'moonshotai/kimi-k2-thinking', 'openai/gpt-4o'). If not provided, falls back to VITE_DEFAULT_MODEL or backend default
  * @param {number} [timeout=30000] - Request timeout in milliseconds for each API call
  * @returns {Promise<Object>} Unified report object with packageInfo, dependencyTree, vulnerabilities, aiSummary, and metadata
  * @throws {Error} Custom error object with type, message, and originalError properties
  * @example
- * const report = await inspectPackage('lodash');
+ * const report = await inspectPackage('lodash', 'openai/gpt-4o');
  * // Returns: { packageInfo: {...}, dependencyTree: {...}, vulnerabilities: [...], aiSummary: {...}, metadata: {...} }
  * @example
  * const report = await inspectPackage('@babel/core');
  */
-async function inspectPackage(packageName, timeout = DEFAULT_TIMEOUT) {
+async function inspectPackage(packageName, model = null, timeout = DEFAULT_TIMEOUT) {
   try {
     // Step 1: Input Validation
     console.log('[inspector] Starting analysis for:', packageName, 'at', new Date().toISOString());
@@ -361,10 +362,11 @@ async function inspectPackage(packageName, timeout = DEFAULT_TIMEOUT) {
       console.log('[inspector] No dependencies to check for vulnerabilities');
     }
 
-    // Step 6: Generate AI Summary with OpenAI API
+    // Step 6: Generate AI Summary with AI API
     let aiSummary = null;
     try {
-      aiSummary = await generateSummary(packageData, vulnerabilities, timeout);
+      console.log('[inspector] Using AI model:', model || 'default');
+      aiSummary = await generateSummary(packageData, vulnerabilities, model, timeout);
       console.log('[inspector] Generated AI summary for:', packageName, '- Risk level:', aiSummary.riskLevel);
     } catch (error) {
       console.error('[inspector] Failed to generate AI summary:', packageName, error.type, error.message);

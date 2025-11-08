@@ -12,7 +12,8 @@ The Inspector is a developer utility that acts as an "X-ray" for open-source npm
 
 - **Package Metadata Analysis**: Fetch comprehensive package information from npm Registry
 - **Vulnerability Scanning**: Identify known security vulnerabilities using the OSV database
-- **AI-Powered Risk Assessment**: Plain-English summaries of security concerns and recommendations powered by OpenAI GPT-4
+- **AI-Powered Risk Assessment**: Plain-English summaries powered by multiple AI providers (OpenAI and OpenRouter) with support for advanced reasoning models like Kimi K2 Thinking, Claude 3.5 Sonnet, and GPT-4o
+- **Model Selection**: Choose from 6 curated AI models via dropdown interface, including reasoning models, vision models, and cost-effective options
 - **Dependency Visualization**: Interactive tree view of package dependencies
 - **Export Functionality**: Download reports as Markdown or PDF for team sharing
 - **Automated Auditing**: Agent Hook integration for automatic analysis when package.json changes
@@ -25,15 +26,17 @@ The Inspector uses a secure three-layer architecture:
 2. **Data Processing Layer**: Utility functions that orchestrate API calls
 3. **API Client Layer**: Modules for external service communication
 
-### Serverless Proxy for OpenAI
+### Serverless Proxy for AI Providers
 
-For security, OpenAI API calls use a serverless function proxy:
+For security, AI API calls (OpenAI and OpenRouter) use a serverless function proxy:
 
 ```
-Browser → Serverless Function (api/analyze.js) → OpenAI API
+Browser → Serverless Function (api/analyze.js) → OpenAI/OpenRouter API
 ```
 
-This architecture ensures the OpenAI API key is never exposed to the browser, following security best practices. The serverless function runs server-side where environment variables are safely accessed.
+This architecture ensures AI provider API keys are never exposed to the browser, following security best practices. The serverless function dynamically routes requests to the configured provider (OpenAI or OpenRouter) based on environment variables.
+
+**Provider Selection**: The application supports two AI providers: OpenAI (direct API access) and OpenRouter (unified API for multiple models). Users can select from 6 curated models via a dropdown in the UI, with the backend handling provider routing automatically.
 
 ## Caching System
 
@@ -44,7 +47,7 @@ The Inspector uses in-memory caching to reduce API costs and improve performance
   - npm Registry API responses (package metadata)
   - OSV API responses (vulnerability data)
 - **NOT Cached**:
-  - OpenAI API responses (context-dependent, always fresh analysis)
+  - AI API responses (OpenAI/OpenRouter) (context-dependent, always fresh analysis)
 
 **Benefits:**
 - Instant results for repeated queries (<1ms vs 5-15 seconds)
@@ -120,7 +123,7 @@ The hook automatically triggers after a 2-second debounce. Check `dependency_aud
 - **External APIs**:
   - npm Registry API (package metadata) - called directly from browser
   - OSV API (security vulnerability data) - called directly from browser
-  - OpenAI API (AI-powered analysis) - called via serverless proxy
+  - OpenAI and OpenRouter APIs (AI-powered analysis with model selection) - called via serverless proxy
 
 ## Installation
 
@@ -147,14 +150,27 @@ npm install -g vercel
 cp .env.example .env
 ```
 
-5. Edit `.env` and add your OpenAI API key:
-```
-OPENAI_API_KEY=your_actual_openai_api_key
-```
+5. Edit `.env` and configure your AI provider:
 
-**Important:** Do NOT prefix with `VITE_` as this would expose the key to the browser (security risk).
+**Option 1 (Recommended): OpenRouter Setup**
+```
+VITE_AI_PROVIDER=openrouter
+OPENROUTER_API_KEY=your_openrouter_api_key
+VITE_DEFAULT_MODEL=moonshotai/kimi-k2-thinking
+VITE_SITE_URL=http://localhost:5173
+VITE_SITE_NAME=The Inspector
+```
+Get your OpenRouter API key from: https://openrouter.ai/keys
 
+**Option 2: OpenAI Setup**
+```
+VITE_AI_PROVIDER=openai
+OPENAI_API_KEY=your_openai_api_key
+VITE_DEFAULT_MODEL=gpt-4o
+```
 Get your OpenAI API key from: https://platform.openai.com/api-keys
+
+**Important:** Do NOT prefix API keys with `VITE_` as this would expose them to the browser (security risk). Only configuration variables like `VITE_AI_PROVIDER` and `VITE_DEFAULT_MODEL` should have the `VITE_` prefix.
 
 **Note:** After running `npm install`, the Dependency Auditor hook is automatically active. First run creates `.kiro/hooks/.dependency-state.json` with current dependencies. Subsequent package installations trigger automatic analysis.
 
@@ -200,12 +216,15 @@ the-inspector/
 │   ├── specs/             # Feature specifications
 │   └── steering/          # Project-wide guidance documents
 ├── api/                   # Serverless functions (server-side)
-│   └── analyze.js         # OpenAI API proxy endpoint
+│   └── analyze.js         # AI API proxy endpoint (OpenAI/OpenRouter)
+├── netlify/               # Netlify-specific serverless functions
+│   └── functions/
+│       └── analyze.js     # AI API proxy endpoint for Netlify (OpenAI/OpenRouter)
 ├── src/
 │   ├── api/               # API client modules (client-side)
 │   │   ├── npm.js         # npm Registry API client
 │   │   ├── osv.js         # OSV vulnerability API client
-│   │   └── openai.js      # OpenAI serverless proxy client
+│   │   └── ai.js          # AI API client for serverless proxy (supports OpenAI and OpenRouter)
 │   ├── components/        # React UI components
 │   ├── utils/             # Utility functions and business logic
 │   ├── styles/            # CSS stylesheets
@@ -222,21 +241,114 @@ the-inspector/
 
 ## Environment Variables
 
-- `OPENAI_API_KEY`: Your OpenAI API key for AI-powered analysis (required, server-side only)
+The Inspector now supports multiple AI providers (OpenAI and OpenRouter). OpenRouter is recommended for access to diverse models including advanced reasoning models like Kimi K2 Thinking.
+
+### Provider Selection
+
+- **`VITE_AI_PROVIDER`** (Client-Side)
+  - Determines which AI service to use: `"openai"` or `"openrouter"`
+  - **Backward Compatibility:** If unset but `OPENAI_API_KEY` exists, defaults to `"openai"`
+  - Recommended: Set explicitly to `"openrouter"` for new deployments
+  - Prefixed with `VITE_` because it's used in browser code
+
+**Precedence Rules:**
+- User-selected model in UI determines provider when present (models prefixed with `openai/` route to OpenAI, others to OpenRouter)
+- If no model is passed in request, uses `VITE_AI_PROVIDER` setting
+- If `VITE_AI_PROVIDER` is unset and `OPENAI_API_KEY` exists, defaults to OpenAI
+- If both `OPENAI_API_KEY` and `OPENROUTER_API_KEY` exist but `VITE_AI_PROVIDER` is unset, defaults to OpenAI (backward compatibility)
+
+### OpenAI Configuration (Conditional)
+
+- **`OPENAI_API_KEY`** (Server-Side Only)
+  - Required only if `VITE_AI_PROVIDER` is `"openai"`
+  - Do NOT prefix with `VITE_` as that would expose it to the browser (security risk)
+  - Used server-side only in the serverless function (`api/analyze.js`)
+  - Get your API key from: https://platform.openai.com/api-keys
+
+### OpenRouter Configuration (Conditional)
+
+- **`OPENROUTER_API_KEY`** (Server-Side Only)
+  - Required only if `VITE_AI_PROVIDER` is `"openrouter"`
+  - Do NOT prefix with `VITE_` as that would expose it to the browser (security risk)
+  - Used server-side only in the serverless function
+  - Get your API key from: https://openrouter.ai/keys
+
+### Model Selection
+
+- **`VITE_DEFAULT_MODEL`** (Client-Side)
+  - Sets the default model in the UI dropdown
+  - Examples:
+    - OpenRouter: `"moonshotai/kimi-k2-thinking"`, `"anthropic/claude-3.5-sonnet"`, `"openai/gpt-4o"`
+    - OpenAI: `"gpt-4o"`, `"gpt-4-turbo"`
+  - Users can override this via the UI model selector
+
+### Optional Attribution (OpenRouter Only)
+
+- **`VITE_SITE_URL`** and **`VITE_SITE_NAME`**
+  - Optional headers for OpenRouter app attribution
+  - Enables app listing at: https://openrouter.ai/apps
+  - Recommended for OpenRouter deployments
 
 **Important Security Notes:**
 
-- The OpenAI API key is used **server-side only** in the serverless function (`api/analyze.js`)
-- Do NOT prefix with `VITE_` as that would expose it to the browser (security risk)
-- For local development, the key is read from `.env` file at project root
-- For production deployment, set this in your Vercel/Netlify dashboard under Environment Variables
+- API keys (OpenAI and OpenRouter) are used **server-side only** in serverless functions
+- Do NOT prefix API keys with `VITE_` as that would expose them to the browser (security risk)
+- For local development, keys are read from `.env` file at project root
+- For production deployment, set these in your Vercel/Netlify dashboard under Environment Variables
 
 **Setting Environment Variables for Deployment:**
 
-1. **Vercel**: Go to Project Settings → Environment Variables → Add `OPENAI_API_KEY`
-2. **Netlify**: Go to Site Settings → Environment Variables → Add `OPENAI_API_KEY`
+**OpenRouter Setup (Recommended):**
+1. **Vercel**: Project Settings → Environment Variables
+   - Add `VITE_AI_PROVIDER` = `openrouter`
+   - Add `OPENROUTER_API_KEY` = [Your OpenRouter API key]
+   - Add `VITE_DEFAULT_MODEL` = `moonshotai/kimi-k2-thinking`
+   - Add `VITE_SITE_URL` = [Your deployment URL]
+   - Add `VITE_SITE_NAME` = `The Inspector`
 
-See `.env.example` for the complete list of required environment variables. Never commit your `.env` file with real API keys.
+2. **Netlify**: Site Settings → Environment Variables
+   - Add `VITE_AI_PROVIDER` = `openrouter`
+   - Add `OPENROUTER_API_KEY` = [Your OpenRouter API key]
+   - Add `VITE_DEFAULT_MODEL` = `moonshotai/kimi-k2-thinking`
+   - Add `VITE_SITE_URL` = [Your deployment URL]
+   - Add `VITE_SITE_NAME` = `The Inspector`
+
+**OpenAI Setup:**
+1. **Vercel**: Project Settings → Environment Variables
+   - Add `VITE_AI_PROVIDER` = `openai`
+   - Add `OPENAI_API_KEY` = [Your OpenAI API key]
+   - Add `VITE_DEFAULT_MODEL` = `gpt-4o`
+
+2. **Netlify**: Site Settings → Environment Variables
+   - Add `VITE_AI_PROVIDER` = `openai`
+   - Add `OPENAI_API_KEY` = [Your OpenAI API key]
+   - Add `VITE_DEFAULT_MODEL` = `gpt-4o`
+
+See `.env.example` for the complete list of environment variables. Never commit your `.env` file with real API keys.
+
+## Model Selection
+
+The Inspector supports 6 curated AI models through a dropdown interface:
+
+**Available Models:**
+1. **Moonshot Kimi K2 Thinking** (Recommended) - Advanced reasoning model with extended context
+2. **Claude 3.5 Sonnet** - Anthropic's latest model with strong analytical capabilities
+3. **OpenAI GPT-4o** - OpenAI's flagship model with multimodal support
+4. **Google Gemini Flash (Free)** - Fast, cost-effective model for quick analysis
+5. **Meta Llama 3.1 70B** - Open-source model with strong performance
+6. **Mistral Large** - European AI model with competitive capabilities
+
+**How It Works:**
+- Select your preferred model from the dropdown before analyzing a package
+- The default model is set via `VITE_DEFAULT_MODEL` environment variable
+- Model selection is passed to the backend, which routes to the appropriate provider
+- Different models may provide varying levels of detail and analysis depth
+
+**Model Selection Tips:**
+- Use **Kimi K2 Thinking** for complex packages with many dependencies (best reasoning)
+- Use **Gemini Flash** for quick analysis of simple packages (fastest, free)
+- Use **GPT-4o** for balanced performance and quality
+- Use **Claude 3.5 Sonnet** for detailed security analysis
 
 ## API Endpoints
 
@@ -260,9 +372,15 @@ Internal serverless endpoint for AI-powered package analysis. Called by the fron
       "severity": "High",
       "summary": "Vulnerability description"
     }
-  ]
+  ],
+  "model": "moonshotai/kimi-k2-thinking"
 }
 ```
+
+**Request Fields:**
+- `packageData` (required): Package metadata object with name, version, dependencies, and license
+- `vulnerabilities` (required): Array of vulnerability objects
+- `model` (optional): AI model to use for analysis (e.g., "moonshotai/kimi-k2-thinking", "openai/gpt-4o"). If omitted, uses `VITE_DEFAULT_MODEL` or provider-specific default.
 
 **Response Format:**
 ```json
@@ -324,9 +442,11 @@ The Inspector is optimized for speed and efficiency:
 
 ## Troubleshooting
 
-### AI Summary Feature Not Working
+### AI Summary Feature Not Working (Multi-Provider)
 
-- **Check API Key**: Ensure `OPENAI_API_KEY` is set correctly in `.env` file (no `VITE_` prefix)
+- **Check API Key**: Ensure the correct API key is set (`OPENAI_API_KEY` for OpenAI or `OPENROUTER_API_KEY` for OpenRouter) based on your `VITE_AI_PROVIDER` setting
+- **Verify Provider Configuration**: Check that `VITE_AI_PROVIDER` matches your API key (e.g., if using OpenRouter, ensure `VITE_AI_PROVIDER=openrouter`)
+- **Test Model Selection**: Try different models from the dropdown to verify the feature works correctly
 - **Verify Vercel CLI**: Make sure you're running `vercel dev` (not `npm run dev`) to enable serverless functions
 - **Check Console**: Look for error messages in browser console and terminal
 
@@ -334,13 +454,175 @@ The Inspector is optimized for speed and efficiency:
 
 - **Install Vercel CLI**: Run `npm install -g vercel` if not already installed
 - **Run with Vercel**: Use `vercel dev` instead of `npm run dev`
-- **Check Environment Variables**: Verify `.env` file exists at project root with `OPENAI_API_KEY`
+- **Check Environment Variables**: Verify `.env` file exists at project root with the correct API key based on your provider (`OPENAI_API_KEY` for OpenAI or `OPENROUTER_API_KEY` for OpenRouter), and ensure `VITE_AI_PROVIDER` matches your configuration
 
 ### Deployment Issues
 
-- **Environment Variables**: Verify `OPENAI_API_KEY` is set in Vercel/Netlify dashboard
+- **Environment Variables**: Verify the correct API key is set based on your provider (`OPENAI_API_KEY` for OpenAI or `OPENROUTER_API_KEY` for OpenRouter) in Vercel/Netlify dashboard, and ensure `VITE_AI_PROVIDER` matches your configuration
 - **Build Logs**: Check deployment logs for errors related to serverless functions
 - **API Endpoint**: Ensure `/api/analyze` endpoint is accessible after deployment
+
+## End-to-End Testing Guide
+
+After implementing the OpenRouter integration, perform these tests to verify all features work correctly:
+
+### Test 1: Backward Compatibility (OpenAI Only)
+
+**Setup:**
+- Set only `OPENAI_API_KEY` in `.env` (do not set `VITE_AI_PROVIDER`)
+- Remove or comment out `OPENROUTER_API_KEY`
+
+**Expected Behavior:**
+- Application should default to OpenAI provider
+- Model dropdown should show all 6 models
+- Analysis should complete successfully with OpenAI models (e.g., gpt-4o)
+- Console logs should show: `[serverless] Using AI provider: openai`
+
+**Test Steps:**
+1. Run `vercel dev`
+2. Analyze a package (e.g., "lodash")
+3. Verify AI summary is generated
+4. Check browser console and terminal logs for provider confirmation
+
+### Test 2: OpenRouter with Default Model
+
+**Setup:**
+- Set `VITE_AI_PROVIDER=openrouter` in `.env`
+- Set `OPENROUTER_API_KEY` with valid key
+- Set `VITE_DEFAULT_MODEL=moonshotai/kimi-k2-thinking`
+- Remove or comment out `OPENAI_API_KEY`
+
+**Expected Behavior:**
+- Application should use OpenRouter provider
+- Model dropdown should default to "Moonshot Kimi K2 Thinking (Recommended)"
+- Analysis should complete successfully
+- Console logs should show: `[serverless] Using AI provider: openrouter` and `[serverless] Using model: moonshotai/kimi-k2-thinking`
+
+**Test Steps:**
+1. Run `vercel dev`
+2. Verify dropdown shows correct default selection
+3. Analyze a package (e.g., "express")
+4. Verify AI summary is generated with reasoning model characteristics
+5. Check console logs for provider and model confirmation
+
+### Test 3: Model Selection from Dropdown
+
+**Setup:**
+- Use OpenRouter configuration from Test 2
+
+**Expected Behavior:**
+- Each model selection should work correctly
+- Different models may provide varying analysis styles
+- Console logs should show the selected model
+
+**Test Steps:**
+1. Select "Claude 3.5 Sonnet" from dropdown
+2. Analyze a package (e.g., "axios")
+3. Verify analysis completes and check logs show: `[serverless] Using model: anthropic/claude-3.5-sonnet`
+4. Repeat with "OpenAI GPT-4o" and verify logs show: `[serverless] Using model: openai/gpt-4o`
+5. Repeat with "Google Gemini Flash (Free)" and verify logs show: `[serverless] Using model: google/gemini-2.0-flash-exp:free`
+6. Test all 6 models to ensure dropdown works correctly
+
+### Test 4: OpenRouter App Attribution Headers
+
+**Setup:**
+- Use OpenRouter configuration from Test 2
+- Set `VITE_SITE_URL=http://localhost:5173`
+- Set `VITE_SITE_NAME=The Inspector`
+
+**Expected Behavior:**
+- OpenRouter API requests should include HTTP-Referer and X-Title headers
+- These headers enable app listing at https://openrouter.ai/apps
+
+**Test Steps:**
+1. Run `vercel dev`
+2. Open browser DevTools → Network tab
+3. Analyze a package
+4. Find the request to `/api/analyze` in Network tab
+5. Check the request payload/headers (note: headers are set server-side, so check terminal logs)
+6. Verify terminal logs show the attribution headers being sent to OpenRouter
+
+### Test 5: Model Fallback Behavior
+
+**Setup:**
+- Use OpenRouter configuration
+- Do NOT set `VITE_DEFAULT_MODEL`
+
+**Expected Behavior:**
+- Application should fall back to provider-specific default
+- OpenRouter: `moonshotai/kimi-k2-thinking`
+- OpenAI: `gpt-4o`
+
+**Test Steps:**
+1. Run `vercel dev`
+2. Verify dropdown shows the fallback default model
+3. Analyze a package without changing model selection
+4. Verify analysis completes with the fallback model
+5. Check console logs confirm fallback model was used
+
+### Test 6: Error Handling and Provider Validation
+
+**Setup:**
+- Set `VITE_AI_PROVIDER=openrouter`
+- Do NOT set `OPENROUTER_API_KEY` (intentionally missing)
+
+**Expected Behavior:**
+- Application should return 500 error with message: "Server configuration error: OPENROUTER_API_KEY is not set"
+- Error should be displayed in the UI
+
+**Test Steps:**
+1. Run `vercel dev`
+2. Analyze a package
+3. Verify error message is displayed in UI
+4. Check console logs for configuration error
+5. Repeat test with `VITE_AI_PROVIDER=openai` and missing `OPENAI_API_KEY`
+
+### Test 7: Provider-Agnostic Error Messages
+
+**Setup:**
+- Use valid OpenRouter configuration
+- Temporarily set invalid API key to trigger authentication error
+
+**Expected Behavior:**
+- Error messages should be provider-agnostic (e.g., "AI API error" not "OpenAI error")
+- Authentication errors should mention the specific provider
+
+**Test Steps:**
+1. Set `OPENROUTER_API_KEY=invalid_key`
+2. Run `vercel dev`
+3. Analyze a package
+4. Verify error message mentions "openrouter API authentication failed" (provider-specific)
+5. Check that other errors use generic "AI API" terminology
+
+### Test 8: Complete Feature Integration
+
+**Setup:**
+- Use valid OpenRouter configuration with all optional variables
+
+**Expected Behavior:**
+- All features should work together seamlessly
+- Package metadata, vulnerabilities, AI summary, dependency tree, and export all functional
+
+**Test Steps:**
+1. Analyze a complex package (e.g., "react")
+2. Verify package metadata loads correctly
+3. Verify vulnerabilities are displayed (if any)
+4. Verify AI summary is generated with selected model
+5. Verify dependency tree is displayed
+6. Test Export to Markdown
+7. Test Export to PDF
+8. Verify all features work without errors
+
+### Success Criteria
+
+✅ All 8 tests pass without errors  
+✅ Backward compatibility maintained (OpenAI-only setup works)  
+✅ OpenRouter integration works with all 6 models  
+✅ Model selection dropdown functions correctly  
+✅ App attribution headers are sent (when configured)  
+✅ Fallback behavior works as expected  
+✅ Error handling is robust and user-friendly  
+✅ All existing features (export, caching, etc.) continue to work
 
 ## How Kiro Was Used
 
@@ -390,7 +672,7 @@ Why impressive: Complex orchestration logic with multiple API calls, CVSS vector
 Other notable examples:
 - `src/utils/inspector.js`: Orchestration function that coordinates three API clients with partial failure handling
 - `src/components/NutritionLabel.js`: Complex UI component with five sections, color-coded vulnerabilities, and conditional rendering
-- `api/analyze.js`: Serverless function with OpenAI integration, JSON validation, and structured prompt engineering
+- `api/analyze.js`: Serverless function with multi-provider AI integration (OpenAI and OpenRouter), request validation, prompt engineering, and error handling
 
 Context Providers used:
 - `#file`: Referenced existing files for consistency (e.g., "Follow the pattern in `#src/api/npm.js`")
@@ -451,7 +733,7 @@ Strategy that made the biggest difference: api-standards.md
 
 Defined standards for all API clients: timeout (30s), exponential backoff retry (3 attempts: 1s, 2s, 4s), response validation, error handling, logging, JSDoc.
 
-Impact: All three API clients (npm.js, osv.js, openai.js) follow identical patterns:
+Impact: All three API clients (npm.js, osv.js, ai.js) follow identical patterns:
 - Same helper function structure (`_validateResponse`, `_shouldRetry`, `_sleep`, `_createErrorObject`)
 - Same error object format (`{ type, message, originalError }`)
 - Same logging prefix convention (`[npm]`, `[osv]`, `[openai]`)

@@ -1,5 +1,5 @@
 /**
- * OpenAI API client that calls the serverless proxy endpoint.
+ * AI API client that calls the serverless proxy endpoint for multi-provider AI service (OpenAI and OpenRouter).
  * This client follows the same architectural patterns as npm.js and osv.js.
  * 
  * Platform Support:
@@ -14,7 +14,7 @@
  * 
  * Timeout Configuration:
  * - Default: 30 seconds (suitable for Vercel)
- * - Override with VITE_OPENAI_TIMEOUT env var (in milliseconds)
+ * - Override with VITE_AI_TIMEOUT env var (in milliseconds)
  * - Recommended for Netlify: 25000 (25s) for Pro tier, 9000 (9s) for Free tier
  * 
  * Note: This API client does NOT use caching (unlike npm.js and osv.js).
@@ -39,9 +39,9 @@ const SERVERLESS_ENDPOINT = DEPLOY_PLATFORM === 'netlify'
 const FALLBACK_ENDPOINT = DEPLOY_PLATFORM === 'netlify'
   ? '/api/analyze'
   : '/.netlify/functions/analyze';
-// Allow timeout override via VITE_OPENAI_TIMEOUT env var (useful for Netlify's shorter limits)
-const DEFAULT_TIMEOUT = import.meta.env.VITE_OPENAI_TIMEOUT 
-  ? parseInt(import.meta.env.VITE_OPENAI_TIMEOUT, 10) 
+// Allow timeout override via VITE_AI_TIMEOUT env var (useful for Netlify's shorter limits)
+const DEFAULT_TIMEOUT = import.meta.env.VITE_AI_TIMEOUT 
+  ? parseInt(import.meta.env.VITE_AI_TIMEOUT, 10) 
   : 30000;
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_DELAYS = [1000, 2000, 4000];
@@ -296,20 +296,22 @@ function _mapAxiosError(error, packageName) {
 }
 
 /**
- * Generates an AI-powered plain-English summary of package security and complexity using GPT-4
+ * Generates an AI-powered plain-English summary of package security and complexity
  * @param {Object} packageData - Package metadata from npm.js with name, version, dependencies, license
  * @param {Array<Object>} vulnerabilities - Array of vulnerability objects from osv.js with package, id, severity, summary
+ * @param {string} [model] - Optional AI model to use (e.g., 'moonshotai/kimi-k2-thinking', 'openai/gpt-4o'). Falls back to VITE_DEFAULT_MODEL or backend default if not provided
  * @param {number} [timeout=30000] - Request timeout in milliseconds
  * @returns {Promise<Object>} AI summary object with riskLevel, concerns, recommendations, complexityAssessment
  * @throws {Error} Custom error object with type, message, and originalError properties
  * @example
  * const summary = await generateSummary(
  *   { name: 'lodash', version: '4.17.21', dependencies: {...}, license: 'MIT' },
- *   [{ package: 'lodash', id: 'CVE-2021-23337', severity: 'High', summary: '...' }]
+ *   [{ package: 'lodash', id: 'CVE-2021-23337', severity: 'High', summary: '...' }],
+ *   'moonshotai/kimi-k2-thinking'
  * );
  * // Returns: { riskLevel: 'High', concerns: [...], recommendations: [...], complexityAssessment: '...' }
  */
-async function generateSummary(packageData, vulnerabilities, timeout = DEFAULT_TIMEOUT) {
+async function generateSummary(packageData, vulnerabilities, model = null, timeout = DEFAULT_TIMEOUT) {
   // Input validation
   try {
     _validatePackageData(packageData);
@@ -320,13 +322,13 @@ async function generateSummary(packageData, vulnerabilities, timeout = DEFAULT_T
       validationError.message,
       validationError
     );
-    console.error('[openai] Validation error:', errorObj.message);
+    console.error('[ai] Validation error:', errorObj.message);
     throw errorObj;
   }
 
   // Logging
   const startTime = Date.now();
-  console.log('[openai] Generating summary for:', packageData.name, 'at', new Date().toISOString());
+  console.log('[ai] Generating summary for:', packageData.name, 'at', new Date().toISOString());
 
   // Retry loop with exponential backoff
   let useFallback = false;
@@ -347,12 +349,13 @@ async function generateSummary(packageData, vulnerabilities, timeout = DEFAULT_T
           id: v.id,
           severity: v.severity,
           summary: v.summary
-        }))
+        })),
+        model: model || undefined
       };
 
       // Select endpoint (primary or fallback)
       const endpoint = useFallback ? FALLBACK_ENDPOINT : SERVERLESS_ENDPOINT;
-      console.log('[openai] Using endpoint:', endpoint);
+      console.log('[ai] Using endpoint:', endpoint);
 
       // Make request to serverless endpoint
       const response = await axios.post(endpoint, requestBody, {
@@ -370,8 +373,8 @@ async function generateSummary(packageData, vulnerabilities, timeout = DEFAULT_T
 
       // Success logging
       const responseTime = Date.now() - startTime;
-      console.log('[openai] Successfully generated summary for:', packageData.name, 'in', responseTime, 'ms');
-      console.log('[openai] Risk level:', summary.riskLevel);
+      console.log('[ai] Successfully generated summary for:', packageData.name, 'in', responseTime, 'ms');
+      console.log('[ai] Risk level:', summary.riskLevel);
 
       return summary;
 
@@ -386,7 +389,7 @@ async function generateSummary(packageData, vulnerabilities, timeout = DEFAULT_T
 
       if (canFallback) {
         // Try fallback endpoint once
-        console.log('[openai] Primary endpoint failed, trying fallback endpoint');
+        console.log('[ai] Primary endpoint failed, trying fallback endpoint');
         useFallback = true;
         continue;
       }
@@ -394,17 +397,17 @@ async function generateSummary(packageData, vulnerabilities, timeout = DEFAULT_T
       if (isLastAttempt || !shouldRetryResult) {
         // Map error and throw
         const errorObj = _mapAxiosError(error, packageData.name);
-        console.error('[openai] Error generating summary:', packageData.name, errorObj.type, errorObj.message);
+        console.error('[ai] Error generating summary:', packageData.name, errorObj.type, errorObj.message);
         throw errorObj;
       }
 
       // Log retry attempt
-      console.log('[openai] Retry attempt', attempt + 1, '/', MAX_RETRY_ATTEMPTS, 'for package:', packageData.name);
+      console.log('[ai] Retry attempt', attempt + 1, '/', MAX_RETRY_ATTEMPTS, 'for package:', packageData.name);
 
       // Wait before retry - use Retry-After if provided, otherwise use exponential backoff
       if (typeof shouldRetryResult === 'number') {
         const retryAfterMs = shouldRetryResult * 1000;
-        console.log('[openai] Respecting Retry-After:', shouldRetryResult, 'seconds');
+        console.log('[ai] Respecting Retry-After:', shouldRetryResult, 'seconds');
         await _sleep(retryAfterMs);
       } else {
         await _sleep(RETRY_DELAYS[attempt]);

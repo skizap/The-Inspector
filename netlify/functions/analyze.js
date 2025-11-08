@@ -1,13 +1,12 @@
 /**
- * Netlify-compatible serverless function that acts as a secure proxy for OpenAI API calls.
+ * Netlify-compatible serverless function that acts as a secure proxy for AI API calls (OpenAI and OpenRouter).
  * This is a wrapper around the core logic from api/analyze.js adapted for Netlify's handler signature.
  */
 
 import axios from 'axios';
 
 // Constants
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-const OPENAI_MODEL = 'gpt-4o';
+// Note: baseURL and model are determined dynamically based on provider
 const DEFAULT_TIMEOUT = 30000;
 const MAX_TOKENS = 1000;
 const TEMPERATURE = 0.7;
@@ -24,13 +23,21 @@ Your response must be in JSON format with the following structure:
   "riskLevel": "Low|Medium|High|Critical",
   "concerns": ["concern1", "concern2", ...],
   "recommendations": ["recommendation1", "recommendation2", ...],
-  "complexityAssessment": "paragraph describing dependency complexity"
+  "complexityAssessment": "paragraph describing dependency complexity",
+  "maintenanceStatus": "Active|Stale|Abandoned|Unknown",
+  "licenseCompatibility": "Permissive|Copyleft|Proprietary|Unknown",
+  "maintenanceNotes": "brief note about maintenance status and license implications"
 }
 
 - riskLevel must be one of: Low, Medium, High, Critical
 - concerns must be an array of 2-5 key security concern strings
 - recommendations must be an array of 2-5 actionable recommendation strings
-- complexityAssessment must be a single paragraph describing dependency complexity`;
+- complexityAssessment must be a single paragraph describing dependency complexity
+- maintenanceStatus: Active (updated within 1 year), Stale (1-2 years), Abandoned (>2 years), Unknown
+- licenseCompatibility: Permissive (MIT/Apache/BSD), Copyleft (GPL/LGPL), Proprietary, Unknown
+- maintenanceNotes: brief assessment of maintenance health and license implications
+
+Consider open issues count as indicator of active maintenance.`;
 }
 
 /**
@@ -109,6 +116,25 @@ Vulnerabilities: ${severityCounts.Critical} Critical, ${severityCounts.High} Hig
 
   prompt += `\nLicense: ${packageData.license || 'Unknown'}`;
 
+  // Add maintenance information
+  if (packageData.lastPublishDate) {
+    const daysAgo = Math.floor((Date.now() - new Date(packageData.lastPublishDate)) / (1000 * 60 * 60 * 24));
+    const publishDate = new Date(packageData.lastPublishDate).toLocaleDateString();
+    prompt += `\nLast Published: ${daysAgo} days ago (${publishDate})`;
+    
+    // Add staleness warnings
+    if (daysAgo > 730) {
+      prompt += '\n⚠️ Package has not been updated in over 2 years (potentially abandoned)';
+    } else if (daysAgo > 365) {
+      prompt += '\n⚠️ Package has not been updated in over 1 year';
+    }
+  }
+
+  // Add GitHub stats if available
+  if (packageData.githubStats?.openIssues !== undefined) {
+    prompt += `\nOpen Issues: ${packageData.githubStats.openIssues}`;
+  }
+
   return prompt;
 }
 
@@ -152,6 +178,23 @@ function _parseAIResponse(content) {
     throw new Error('Invalid complexityAssessment: must be non-empty string');
   }
 
+  // Validate maintenanceStatus
+  const validMaintenanceStatuses = ['Active', 'Stale', 'Abandoned', 'Unknown'];
+  if (parsed.maintenanceStatus && !validMaintenanceStatuses.includes(parsed.maintenanceStatus)) {
+    throw new Error(`Invalid maintenanceStatus: ${parsed.maintenanceStatus}`);
+  }
+
+  // Validate licenseCompatibility
+  const validLicenseTypes = ['Permissive', 'Copyleft', 'Proprietary', 'Unknown'];
+  if (parsed.licenseCompatibility && !validLicenseTypes.includes(parsed.licenseCompatibility)) {
+    throw new Error(`Invalid licenseCompatibility: ${parsed.licenseCompatibility}`);
+  }
+
+  // Validate maintenanceNotes
+  if (parsed.maintenanceNotes && typeof parsed.maintenanceNotes !== 'string') {
+    throw new Error('Invalid maintenanceNotes: must be a string');
+  }
+
   return parsed;
 }
 
@@ -161,19 +204,7 @@ function _parseAIResponse(content) {
  * @param {Object} context - Netlify context object
  * @returns {Promise<Object>} Response object with statusCode, headers, body
  */
-export async function handler(event, context) {
-  // Validate environment variable
-  if (!process.env.OPENAI_API_KEY) {
-    console.error('[netlify] OPENAI_API_KEY environment variable not set');
-    return {
-      statusCode: 500,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        error: 'Server configuration error: OPENAI_API_KEY not set' 
-      })
-    };
-  }
-
+export async function handler(event) {
   // Validate request method
   if (event.httpMethod !== 'POST') {
     return {
@@ -193,6 +224,78 @@ export async function handler(event, context) {
     };
   }
 
+  // Determine AI provider with backward compatibility
+  let provider = process.env.VITE_AI_PROVIDER;
+  
+  // Normalize provider to avoid case/whitespace configuration pitfalls
+  provider = (provider || '').trim().toLowerCase();
+  
+  // Backward compatibility: default to 'openai' if VITE_AI_PROVIDER not set but OPENAI_API_KEY exists
+  if (!provider && process.env.OPENAI_API_KEY) {
+    provider = 'openai';
+  }
+
+  // Validate provider value
+  if (provider && provider !== 'openai' && provider !== 'openrouter') {
+    console.error('[netlify] Unsupported VITE_AI_PROVIDER value:', provider);
+    return {
+      statusCode: 500,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        error: 'Server configuration error: unsupported VITE_AI_PROVIDER value' 
+      })
+    };
+  }
+
+  // Configure provider-specific settings
+  let baseURL;
+  let apiKey;
+  let headers;
+
+  if (provider === 'openrouter') {
+    // Validate OpenRouter API key
+    if (!process.env.OPENROUTER_API_KEY) {
+      console.error('[netlify] OPENROUTER_API_KEY environment variable not set');
+      return {
+        statusCode: 500,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          error: 'Server configuration error: OPENROUTER_API_KEY is not set' 
+        })
+      };
+    }
+
+    baseURL = 'https://openrouter.ai/api/v1/chat/completions';
+    apiKey = process.env.OPENROUTER_API_KEY;
+    headers = {
+      'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': process.env.VITE_SITE_URL || '',
+      'X-Title': process.env.VITE_SITE_NAME || 'The Inspector',
+      'Content-Type': 'application/json'
+    };
+  } else {
+    // Default to OpenAI
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('[netlify] OPENAI_API_KEY environment variable not set');
+      return {
+        statusCode: 500,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          error: 'Server configuration error: OPENAI_API_KEY not set' 
+        })
+      };
+    }
+
+    baseURL = 'https://api.openai.com/v1/chat/completions';
+    apiKey = process.env.OPENAI_API_KEY;
+    headers = {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    };
+  }
+
+  console.log('[netlify] Using AI provider:', provider);
+
   // Parse request body
   let requestBody;
   try {
@@ -206,7 +309,7 @@ export async function handler(event, context) {
   }
 
   // Validate request body
-  const { packageData, vulnerabilities } = requestBody;
+  const { packageData, vulnerabilities, model: requestedModel } = requestBody;
 
   if (!packageData || typeof packageData !== 'object') {
     return {
@@ -240,29 +343,53 @@ export async function handler(event, context) {
     };
   }
 
+  // Determine model to use
+  let modelToUse;
+  if (requestedModel) {
+    modelToUse = requestedModel;
+  } else if (process.env.VITE_DEFAULT_MODEL) {
+    modelToUse = process.env.VITE_DEFAULT_MODEL;
+  } else {
+    // Provider-specific defaults
+    modelToUse = provider === 'openrouter' ? 'moonshotai/kimi-k2-thinking' : 'gpt-4o';
+  }
+
+  // Validate model compatibility with provider
+  if (provider === 'openrouter') {
+    // Check if using a plain OpenAI model name without vendor prefix
+    const plainOpenAIModels = ['gpt-4o', 'gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo'];
+    if (plainOpenAIModels.includes(modelToUse)) {
+      return {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          error: `Model '${modelToUse}' is not compatible with OpenRouter. Use OpenRouter model format (e.g., 'openai/gpt-4o' or 'moonshotai/kimi-k2-thinking').` 
+        })
+      };
+    }
+  }
+
   console.log('[netlify] Analyzing package:', packageData.name);
+  console.log('[netlify] Using model:', modelToUse);
 
   try {
-    // Build OpenAI request
+    // Build AI request
     const messages = [
       { role: 'system', content: _buildSystemPrompt() },
       { role: 'user', content: _buildUserPrompt(packageData, vulnerabilities) }
     ];
 
-    const openaiRequestBody = {
-      model: OPENAI_MODEL,
+    const aiRequestBody = {
+      model: modelToUse,
       messages: messages,
       temperature: TEMPERATURE,
       max_tokens: MAX_TOKENS,
       response_format: { type: 'json_object' }
     };
 
-    // Make OpenAI API call
-    const response = await axios.post(OPENAI_API_URL, openaiRequestBody, {
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
+    // Make AI API call
+    const response = await axios.post(baseURL, aiRequestBody, {
+      headers: headers,
       timeout: DEFAULT_TIMEOUT
     });
 
@@ -288,7 +415,7 @@ export async function handler(event, context) {
     };
 
   } catch (error) {
-    console.error('[netlify] OpenAI error:', error.message);
+    console.error('[netlify] AI API error:', error.message);
 
     // Handle specific error types
     if (error.response) {
@@ -299,7 +426,7 @@ export async function handler(event, context) {
           statusCode: 401,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            error: 'OpenAI API authentication failed. Please check server configuration.' 
+            error: `${provider} API authentication failed. Please check server configuration.` 
           })
         };
       }
@@ -307,15 +434,15 @@ export async function handler(event, context) {
       if (status === 429) {
         // Forward Retry-After header if present
         const retryAfter = error.response.headers['retry-after'];
-        const headers = { 'Content-Type': 'application/json' };
+        const responseHeaders = { 'Content-Type': 'application/json' };
         if (retryAfter) {
-          headers['Retry-After'] = retryAfter;
+          responseHeaders['Retry-After'] = retryAfter;
         }
         return {
           statusCode: 429,
-          headers,
+          headers: responseHeaders,
           body: JSON.stringify({ 
-            error: 'OpenAI rate limit exceeded. Please try again in a moment.' 
+            error: 'AI API rate limit exceeded. Please try again in a moment.' 
           })
         };
       }
@@ -325,7 +452,7 @@ export async function handler(event, context) {
           statusCode: 502,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            error: 'OpenAI API temporarily unavailable. Please try again.' 
+            error: 'AI API temporarily unavailable. Please try again.' 
           })
         };
       }
@@ -337,7 +464,7 @@ export async function handler(event, context) {
         statusCode: 504,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          error: 'OpenAI request timed out. Please try again.' 
+          error: 'AI request timed out. Please try again.' 
         })
       };
     }
@@ -348,7 +475,7 @@ export async function handler(event, context) {
         statusCode: 502,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          error: 'Failed to connect to OpenAI API.' 
+          error: 'Failed to connect to AI API.' 
         })
       };
     }

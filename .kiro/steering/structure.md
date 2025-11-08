@@ -23,7 +23,7 @@ the-inspector/
 │   ├── api/
 │   │   ├── npm.js
 │   │   ├── osv.js
-│   │   └── openai.js
+│   │   └── ai.js
 │   ├── components/
 │   │   ├── InspectorForm.js
 │   │   ├── NutritionLabel.js
@@ -103,7 +103,7 @@ CSS stylesheets.
 
 - **React components**: PascalCase (e.g., `InspectorForm.js`, `NutritionLabel.js`)
 - **Utility modules**: camelCase (e.g., `inspector.js`, `cache.js`)
-- **API clients**: lowercase (e.g., `npm.js`, `osv.js`, `openai.js`)
+- **API clients**: lowercase (e.g., `npm.js`, `osv.js`, `ai.js`)
 - **Steering files**: lowercase with hyphens (e.g., `api-standards.md`, `code-conventions.md`)
 - **Configuration files**: lowercase with dots (e.g., `.env.example`, `vite.config.js`)
 

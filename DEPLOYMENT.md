@@ -9,7 +9,9 @@ Deploy The Inspector to Vercel or Netlify
 - Git installed and configured
 - GitHub account (for GitHub integration)
 - Vercel or Netlify account (free tier is sufficient)
-- OpenAI API key (get from https://platform.openai.com/api-keys)
+- OpenAI API key (for OpenAI provider) OR OpenRouter API key (for OpenRouter provider - recommended)
+- Get OpenAI key from: https://platform.openai.com/api-keys
+- Get OpenRouter key from: https://openrouter.ai/keys (recommended for access to multiple models)
 
 ## Deployment to Vercel (Recommended)
 
@@ -236,7 +238,7 @@ The Inspector uses platform-specific endpoints for OpenAI API calls:
 
 ### Platform Detection
 
-The frontend (`src/api/openai.js`) determines which endpoint to use via the `VITE_DEPLOY_PLATFORM` environment variable:
+The frontend (`src/api/ai.js`) determines which endpoint to use via the `VITE_DEPLOY_PLATFORM` environment variable:
 
 **Recommended Configuration:**
 
@@ -307,15 +309,15 @@ The project includes a Netlify-compatible function at `netlify/functions/analyze
 - Free tier: 10 seconds maximum execution time
 - Pro tier: 26 seconds maximum execution time
 
-**Important:** The default client timeout in `src/api/openai.js` is 30 seconds, which exceeds Netlify's free tier limit. If you experience timeout issues on Netlify:
+**Important:** The default client timeout in `src/api/ai.js` is 30 seconds, which exceeds Netlify's free tier limit. If you experience timeout issues on Netlify:
 
-1. **Option 1: Reduce OpenAI Response Time**
+1. **Option 1: Reduce AI Response Time**
    - Lower `MAX_TOKENS` in `netlify/functions/analyze.js` (default: 1000, try: 500-750)
    - Lower `TEMPERATURE` for more deterministic responses (default: 0.7, try: 0.3-0.5)
    - These changes will make AI responses faster but potentially less detailed
 
 2. **Option 2: Add Custom Timeout Override**
-   - Add `VITE_OPENAI_TIMEOUT` environment variable in Netlify dashboard
+   - Add `VITE_AI_TIMEOUT` environment variable in Netlify dashboard
    - Set value to `25000` (25 seconds) to stay within Pro tier limits
    - The client will use this value instead of the default 30 seconds
 
@@ -327,57 +329,247 @@ The project includes a Netlify-compatible function at `netlify/functions/analyze
 
 ## Environment Variables
 
-**Required Variables:**
+The Inspector supports multiple AI providers (OpenAI and OpenRouter). This section provides comprehensive deployment-focused documentation for configuring your chosen provider.
 
-1. **`OPENAI_API_KEY`** (Server-Side Only)
-   - Your OpenAI API key for AI-powered analysis
-   - Do NOT prefix with `VITE_` (would expose to browser)
-   - Used server-side only in `api/analyze.js` and `netlify/functions/analyze.js`
-   - Never commit to repository (in .gitignore)
+### Required Variables
 
-2. **`VITE_DEPLOY_PLATFORM`** (Client-Side)
-   - Specifies which serverless function endpoint to use
-   - Values: `vercel` or `netlify`
-   - Default: `vercel` (if unset)
-   - Prefixed with `VITE_` because it's used in browser code
+#### 1. AI Provider Selection
+
+**`VITE_AI_PROVIDER`** (Client-Side)
+- Determines which AI service to use for package analysis
+- Values: `"openai"` or `"openrouter"`
+- Prefixed with `VITE_` because it's used in browser code
+- **Backward Compatibility Logic:**
+  - If `VITE_AI_PROVIDER` is set, use that value
+  - If `VITE_AI_PROVIDER` is unset but `OPENAI_API_KEY` exists, default to `"openai"`
+  - If neither is set, the application will fail with a configuration error
+- **Recommendation:** Set explicitly for production deployments to avoid ambiguity
+
+**Precedence Rules:**
+- User-selected model in UI determines provider when present (models prefixed with `openai/` route to OpenAI, others to OpenRouter)
+- If no model is passed in request, uses `VITE_AI_PROVIDER` setting
+- If `VITE_AI_PROVIDER` is unset and `OPENAI_API_KEY` exists, defaults to OpenAI
+- If both `OPENAI_API_KEY` and `OPENROUTER_API_KEY` exist but `VITE_AI_PROVIDER` is unset, defaults to OpenAI (backward compatibility)
+
+#### 2. OpenAI Configuration (Conditional)
+
+**`OPENAI_API_KEY`** (Server-Side Only)
+- Required when `VITE_AI_PROVIDER='openai'` or when using backward compatibility mode
+- Your OpenAI API key for AI-powered analysis
+- Do NOT prefix with `VITE_` (would expose to browser - security risk)
+- Used server-side only in `api/analyze.js` and `netlify/functions/analyze.js`
+- Never commit to repository (in .gitignore)
+- Get your API key from: https://platform.openai.com/api-keys
 
 **Setting in Vercel:**
 - Dashboard: Project Settings → Environment Variables
-  - Add `OPENAI_API_KEY`:
-    - Name: `OPENAI_API_KEY`
-    - Value: [Your OpenAI API key]
-    - Environments: Production, Preview, Development (select all)
-  - Add `VITE_DEPLOY_PLATFORM`:
-    - Name: `VITE_DEPLOY_PLATFORM`
-    - Value: `vercel`
-    - Environments: Production, Preview, Development (select all)
+  - Name: `OPENAI_API_KEY`
+  - Value: [Your OpenAI API key]
+  - Environments: Production, Preview, Development (select all)
 - CLI:
   ```bash
   vercel env add OPENAI_API_KEY
-  vercel env add VITE_DEPLOY_PLATFORM
   ```
 
 **Setting in Netlify:**
 - Dashboard: Site Settings → Environment Variables
-  - Add `OPENAI_API_KEY`:
-    - Key: `OPENAI_API_KEY`
-    - Value: [Your OpenAI API key]
-  - Add `VITE_DEPLOY_PLATFORM`:
-    - Key: `VITE_DEPLOY_PLATFORM`
-    - Value: `netlify`
+  - Key: `OPENAI_API_KEY`
+  - Value: [Your OpenAI API key]
 - CLI:
   ```bash
   netlify env:set OPENAI_API_KEY your_key
-  netlify env:set VITE_DEPLOY_PLATFORM netlify
   ```
 
-**Local Development:**
-- For Vercel: Use `vercel dev` (automatically loads `.env` file)
-- For Netlify: Add `VITE_DEPLOY_PLATFORM=netlify` to `.env` file and run `netlify dev`
+#### 3. OpenRouter Configuration (Conditional)
+
+**`OPENROUTER_API_KEY`** (Server-Side Only)
+- Required when `VITE_AI_PROVIDER='openrouter'`
+- Your OpenRouter API key for AI-powered analysis
+- Do NOT prefix with `VITE_` (would expose to browser - security risk)
+- Used server-side only in `api/analyze.js` and `netlify/functions/analyze.js`
+- Never commit to repository (in .gitignore)
+- Get your API key from: https://openrouter.ai/keys
+
+**Setting in Vercel:**
+- Dashboard: Project Settings → Environment Variables
+  - Name: `OPENROUTER_API_KEY`
+  - Value: [Your OpenRouter API key]
+  - Environments: Production, Preview, Development (select all)
+- CLI:
+  ```bash
+  vercel env add OPENROUTER_API_KEY
+  ```
+
+**Setting in Netlify:**
+- Dashboard: Site Settings → Environment Variables
+  - Key: `OPENROUTER_API_KEY`
+  - Value: [Your OpenRouter API key]
+- CLI:
+  ```bash
+  netlify env:set OPENROUTER_API_KEY your_key
+  ```
+
+#### 4. Model Configuration
+
+**`VITE_DEFAULT_MODEL`** (Client-Side)
+- Sets the initial model selection in the UI dropdown
+- Users can change models via the UI dropdown after initial load
+- Prefixed with `VITE_` because it's used in browser code
+- **Provider-Specific Examples:**
+  - OpenRouter: `"moonshotai/kimi-k2-thinking"`, `"anthropic/claude-3.5-sonnet"`, `"openai/gpt-4o"`
+  - OpenAI: `"gpt-4o"`, `"gpt-4-turbo"`
+
+**Setting in Vercel:**
+- Dashboard: Project Settings → Environment Variables
+  - Name: `VITE_DEFAULT_MODEL`
+  - Value: `moonshotai/kimi-k2-thinking` (for OpenRouter) or `gpt-4o` (for OpenAI)
+  - Environments: Production, Preview, Development (select all)
+- CLI:
+  ```bash
+  vercel env add VITE_DEFAULT_MODEL
+  ```
+
+**Setting in Netlify:**
+- Dashboard: Site Settings → Environment Variables
+  - Key: `VITE_DEFAULT_MODEL`
+  - Value: `moonshotai/kimi-k2-thinking` (for OpenRouter) or `gpt-4o` (for OpenAI)
+- CLI:
+  ```bash
+  netlify env:set VITE_DEFAULT_MODEL moonshotai/kimi-k2-thinking
+  ```
+
+### Optional Variables
+
+#### 5. OpenRouter Attribution (OpenRouter Only)
+
+**`VITE_SITE_URL`** and **`VITE_SITE_NAME`** (Client-Side)
+- Optional headers for OpenRouter app attribution
+- Enables app listing at: https://openrouter.ai/apps
+- Provides benefits like increased rate limits and visibility
+- **Example Values:**
+  - `VITE_SITE_URL`: Your deployment URL (e.g., `"https://the-inspector.vercel.app"`)
+  - `VITE_SITE_NAME`: `"The Inspector"` (or custom name)
+
+**Setting in Vercel:**
+- Dashboard: Project Settings → Environment Variables
+  - Name: `VITE_SITE_URL`
+  - Value: [Your deployment URL]
+  - Environments: Production, Preview, Development (select all)
+  - Name: `VITE_SITE_NAME`
+  - Value: `The Inspector`
+  - Environments: Production, Preview, Development (select all)
+- CLI:
+  ```bash
+  vercel env add VITE_SITE_URL
+  vercel env add VITE_SITE_NAME
+  ```
+
+**Setting in Netlify:**
+- Dashboard: Site Settings → Environment Variables
+  - Key: `VITE_SITE_URL`
+  - Value: [Your deployment URL]
+  - Key: `VITE_SITE_NAME`
+  - Value: `The Inspector`
+- CLI:
+  ```bash
+  netlify env:set VITE_SITE_URL https://your-app.netlify.app
+  netlify env:set VITE_SITE_NAME "The Inspector"
+  ```
+
+### Configuration Examples
+
+#### Example 1: OpenRouter Setup (Recommended)
+
+```bash
+VITE_AI_PROVIDER=openrouter
+OPENROUTER_API_KEY=sk-or-v1-...
+VITE_DEFAULT_MODEL=moonshotai/kimi-k2-thinking
+VITE_SITE_URL=https://your-app.vercel.app
+VITE_SITE_NAME=The Inspector
+```
+
+#### Example 2: OpenAI Setup
+
+```bash
+VITE_AI_PROVIDER=openai
+OPENAI_API_KEY=sk-...
+VITE_DEFAULT_MODEL=gpt-4o
+```
+
+#### Example 3: Backward Compatible (OpenAI)
+
+```bash
+OPENAI_API_KEY=sk-...
+# VITE_AI_PROVIDER not set, defaults to openai
+```
+
+### Local Development
+
+**Testing with OpenRouter:**
+1. Create `.env` file at project root
+2. Add the following variables:
+   ```bash
+   VITE_AI_PROVIDER=openrouter
+   OPENROUTER_API_KEY=sk-or-v1-...
+   VITE_DEFAULT_MODEL=moonshotai/kimi-k2-thinking
+   VITE_SITE_URL=http://localhost:5173
+   VITE_SITE_NAME=The Inspector
+   ```
+3. Run development server:
+   - Vercel: `vercel dev` (automatically loads `.env`)
+   - Netlify: `netlify dev` (automatically loads `.env`)
+
+**Testing with OpenAI:**
+1. Create `.env` file at project root
+2. Add the following variables:
+   ```bash
+   VITE_AI_PROVIDER=openai
+   OPENAI_API_KEY=sk-...
+   VITE_DEFAULT_MODEL=gpt-4o
+   ```
+3. Run development server:
+   - Vercel: `vercel dev` (automatically loads `.env`)
+   - Netlify: `netlify dev` (automatically loads `.env`)
+
+## Model Selection Feature
+
+The Inspector includes a model selection dropdown with 6 curated AI models:
+
+**Available Models:**
+1. **Moonshot Kimi K2 Thinking** (Recommended) - Advanced reasoning model
+2. **Claude 3.5 Sonnet** - Strong analytical capabilities
+3. **OpenAI GPT-4o** - Flagship model with multimodal support
+4. **Google Gemini Flash (Free)** - Fast, cost-effective analysis
+5. **Meta Llama 3.1 70B** - Open-source alternative
+6. **Mistral Large** - European AI model
+
+**How It Works:**
+- Users select their preferred model from the dropdown before analysis
+- The selected model is passed to the backend via the request body
+- Backend routes to the appropriate provider (OpenAI or OpenRouter) based on the model
+- If no model is selected, the system uses `VITE_DEFAULT_MODEL` or provider-specific defaults
+
+**Precedence Rules:**
+- User-selected model in UI determines provider when present (models prefixed with `openai/` route to OpenAI, others to OpenRouter)
+- If no model is passed in request, uses `VITE_AI_PROVIDER` setting
+- If `VITE_AI_PROVIDER` is unset and `OPENAI_API_KEY` exists, defaults to OpenAI
+- If both `OPENAI_API_KEY` and `OPENROUTER_API_KEY` exist but `VITE_AI_PROVIDER` is unset, defaults to OpenAI (backward compatibility)
+
+**Model Routing:**
+- Models prefixed with `openai/` route to OpenAI API (requires `OPENAI_API_KEY`)
+- All other models route to OpenRouter API (requires `OPENROUTER_API_KEY`)
+- The backend handles provider selection automatically based on the model format
+
+**Testing Model Selection:**
+1. Deploy with OpenRouter configuration (recommended)
+2. Open the application and verify the dropdown displays all 6 models
+3. Select different models and analyze packages
+4. Check browser console logs to confirm model selection is passed correctly
+5. Verify analysis completes successfully with each model
 
 ## Troubleshooting
 
-### Issue 1: AI Summary Not Working
+### Issue 1: AI Summary Not Working (Multi-Provider)
 
 **Symptoms:**
 - Package metadata and vulnerabilities load
@@ -385,12 +577,30 @@ The project includes a Netlify-compatible function at `netlify/functions/analyze
 - Console shows 500 error from `/api/analyze`
 
 **Solution:**
-- Verify `OPENAI_API_KEY` is set in deployment platform
-- Check environment variable name (no `VITE_` prefix)
-- Verify API key is valid (test at https://platform.openai.com)
+- Verify the correct API key is set based on your provider (`OPENAI_API_KEY` for OpenAI or `OPENROUTER_API_KEY` for OpenRouter)
+- Check that `VITE_AI_PROVIDER` matches your API key configuration
+- Review precedence rules: user-selected model determines provider; if no model passed, uses `VITE_AI_PROVIDER`; if unset with `OPENAI_API_KEY` present, defaults to OpenAI
+- Try different models from the dropdown to isolate provider-specific issues
+- For OpenRouter, verify your API key has sufficient credits at https://openrouter.ai/credits
+- Check environment variable name (no `VITE_` prefix for API keys)
+- Verify API key is valid (test at https://platform.openai.com or https://openrouter.ai)
 - Check serverless function logs for errors
 
-### Issue 2: Serverless Function Timeout
+### Issue 2: Model Selection Not Working
+
+**Symptoms:**
+- Model dropdown is empty or shows incorrect options
+- Selected model is not used for analysis
+- Console shows model-related errors
+
+**Solution:**
+- Verify `VITE_DEFAULT_MODEL` is set correctly in environment variables
+- Check that the model format matches the provider (e.g., `openai/gpt-4o` for OpenAI, `anthropic/claude-3.5-sonnet` for OpenRouter)
+- Ensure the frontend was rebuilt after changing environment variables (`npm run build`)
+- Check browser console for JavaScript errors related to model selection
+- Verify the model is supported by your configured provider (check OpenRouter model list at https://openrouter.ai/models)
+
+### Issue 3: Serverless Function Timeout
 
 **Symptoms:**
 - Analysis takes >30 seconds
@@ -401,7 +611,7 @@ The project includes a Netlify-compatible function at `netlify/functions/analyze
 - Optimize OpenAI prompt (reduce max_tokens)
 - Check OpenAI API status (https://status.openai.com)
 
-### Issue 3: Build Fails
+### Issue 4: Build Fails
 
 **Symptoms:**
 - Deployment fails during build step
@@ -413,7 +623,7 @@ The project includes a Netlify-compatible function at `netlify/functions/analyze
 - Test build locally: `npm run build`
 - Ensure Node.js version is 18+ (set in Vercel/Netlify settings)
 
-### Issue 4: 404 on Serverless Function
+### Issue 5: 404 on Serverless Function
 
 **Symptoms:**
 - Frontend loads correctly
@@ -442,7 +652,11 @@ The project includes a Netlify-compatible function at `netlify/functions/analyze
 - [ ] Can enter package name in form
 - [ ] Package metadata loads (test with "lodash")
 - [ ] Vulnerabilities are displayed (test with "lodash@4.17.15")
-- [ ] AI summary is generated (confirms serverless function works)
+- [ ] AI summary is generated with default model (confirms serverless function works)
+- [ ] Model selection dropdown displays all 6 models
+- [ ] Can select different models and analysis completes successfully
+- [ ] Default model is pre-selected based on `VITE_DEFAULT_MODEL`
+- [ ] OpenRouter attribution headers are sent (if configured)
 - [ ] Dependency tree is displayed
 - [ ] Export to Markdown works
 - [ ] Export to PDF works
@@ -468,6 +682,105 @@ The project includes a Netlify-compatible function at `netlify/functions/analyze
 - [ ] README.md includes deployment URL
 - [ ] Demo video is uploaded and linked
 
+## Multi-Provider Testing Checklist
+
+After deployment, perform these tests to verify the OpenRouter integration:
+
+### Provider Configuration Tests
+
+**Test 1: OpenAI Provider (Backward Compatibility)**
+- [ ] Set only `OPENAI_API_KEY` (no `VITE_AI_PROVIDER`)
+- [ ] Application defaults to OpenAI provider
+- [ ] Analysis completes successfully
+- [ ] Console logs show:
+  - Vercel: `[serverless] Using AI provider: openai`
+  - Netlify: `[netlify] Using AI provider: openai`
+
+**Test 2: OpenRouter Provider**
+- [ ] Set `VITE_AI_PROVIDER=openrouter` and `OPENROUTER_API_KEY`
+- [ ] Application uses OpenRouter provider
+- [ ] Analysis completes successfully
+- [ ] Console logs show:
+  - Vercel: `[serverless] Using AI provider: openrouter`
+  - Netlify: `[netlify] Using AI provider: openrouter`
+
+**Test 3: Provider Validation**
+- [ ] Set `VITE_AI_PROVIDER=openrouter` without `OPENROUTER_API_KEY`
+- [ ] Application returns 500 error: "OPENROUTER_API_KEY is not set"
+- [ ] Error is displayed in UI
+
+### Model Selection Tests
+
+**Test 4: Default Model**
+- [ ] Verify dropdown shows model from `VITE_DEFAULT_MODEL`
+- [ ] Analysis uses the default model
+- [ ] Console logs show:
+  - Vercel: `[serverless] Using model: [default model]`
+  - Netlify: `[netlify] Using model: [default model]`
+
+**Test 5: Model Selection from Dropdown**
+- [ ] Select "Moonshot Kimi K2 Thinking" and analyze
+- [ ] Select "Claude 3.5 Sonnet" and analyze
+- [ ] Select "OpenAI GPT-4o" and analyze
+- [ ] Select "Google Gemini Flash" and analyze
+- [ ] Select "Meta Llama 3.1 70B" and analyze
+- [ ] Select "Mistral Large" and analyze
+- [ ] All 6 models complete analysis successfully
+
+**Test 6: Model Fallback**
+- [ ] Remove `VITE_DEFAULT_MODEL` from environment
+- [ ] Application uses provider-specific default
+- [ ] OpenRouter: defaults to `moonshotai/kimi-k2-thinking`
+- [ ] OpenAI: defaults to `gpt-4o`
+
+### Attribution Tests (OpenRouter Only)
+
+**Test 7: App Attribution Headers**
+- [ ] Set `VITE_SITE_URL` and `VITE_SITE_NAME`
+- [ ] Analyze a package
+- [ ] Check server logs for HTTP-Referer and X-Title headers
+- [ ] Verify headers are sent to OpenRouter API
+
+### Integration Tests
+
+**Test 8: Complete Feature Integration**
+- [ ] Package metadata loads correctly
+- [ ] Vulnerabilities are displayed
+- [ ] AI summary is generated with selected model
+- [ ] Dependency tree is displayed
+- [ ] Export to Markdown works
+- [ ] Export to PDF works
+- [ ] Caching works (second analysis is instant)
+- [ ] All features work together seamlessly
+
+### Performance Tests
+
+**Test 9: Model Performance Comparison**
+- [ ] Analyze same package with different models
+- [ ] Compare response times (Gemini Flash should be fastest)
+- [ ] Compare analysis quality (Kimi K2 should be most detailed)
+- [ ] Verify all models complete within timeout (30 seconds)
+
+### Error Handling Tests
+
+**Test 10: Provider-Agnostic Error Messages**
+- [ ] Trigger authentication error (invalid API key)
+- [ ] Verify error mentions specific provider (e.g., "openrouter API authentication failed")
+- [ ] Trigger rate limit error
+- [ ] Verify error message is provider-agnostic ("AI API rate limit exceeded")
+- [ ] Trigger timeout error
+- [ ] Verify error message is provider-agnostic ("AI request timed out")
+
+### Success Criteria
+
+✅ All provider configuration tests pass  
+✅ All model selection tests pass  
+✅ Attribution headers are sent (when configured)  
+✅ All integration tests pass  
+✅ Performance is acceptable for all models  
+✅ Error handling is robust and user-friendly  
+✅ Backward compatibility is maintained
+
 ## Custom Domain (Optional)
 
 **Vercel:**
@@ -488,11 +801,16 @@ The project includes a Netlify-compatible function at `netlify/functions/analyze
 - View deployment logs: Project → Deployments → Select deployment → View Logs
 - View serverless function logs: Project → Functions → Select function → View Logs
 - Monitor usage: Project → Analytics
+- Monitor model usage: Check which models are being used most frequently
+- Monitor provider distribution: Track OpenAI vs OpenRouter usage
 
 **Netlify:**
 - View deployment logs: Site → Deploys → Select deploy → Deploy log
 - View serverless function logs: Site → Functions → Select function → Logs
 - Monitor usage: Site → Analytics
+- Monitor model usage: Check which models are being used most frequently
+- Monitor provider distribution: Track OpenAI vs OpenRouter usage
+- Monitor model performance: Compare response times across different models
 
 ## Updating Deployment
 
@@ -515,6 +833,50 @@ netlify deploy --prod
 **Rollback to Previous Version:**
 - Vercel: Project → Deployments → Select previous deployment → Promote to Production
 - Netlify: Site → Deploys → Select previous deploy → Publish deploy
+
+---
+
+**Deployment Complete!**
+
+Your application is now live and accessible to the world. Share the URL with hackathon judges and users.
+
+## Best Practices for Multi-Provider Deployment
+
+**Provider Selection:**
+- **Recommended**: Use OpenRouter for access to multiple models and better cost control
+- **Alternative**: Use OpenAI for direct API access and potentially lower latency
+- **Hybrid**: Deploy multiple instances with different providers for redundancy
+
+**Model Configuration:**
+- Set `VITE_DEFAULT_MODEL` to a reliable, cost-effective model (e.g., `moonshotai/kimi-k2-thinking`)
+- Test all 6 models in staging before production deployment
+- Monitor model performance and adjust defaults based on usage patterns
+- Consider model costs when selecting defaults (Gemini Flash is free, others vary)
+
+**Environment Variables:**
+- Always set `VITE_AI_PROVIDER` explicitly in production (avoid relying on backward compatibility)
+- Use separate environment variables for staging and production
+- Rotate API keys regularly for security
+- Set `VITE_SITE_URL` and `VITE_SITE_NAME` for OpenRouter attribution benefits
+
+**Monitoring:**
+- Track model usage to understand user preferences
+- Monitor API costs across providers
+- Set up alerts for API errors or rate limits
+- Log model selection for debugging and analytics
+
+**Cost Optimization:**
+- Use Gemini Flash for simple packages (free tier)
+- Use Kimi K2 or Claude for complex packages requiring detailed analysis
+- Set appropriate `MAX_TOKENS` limits in serverless functions
+- Implement caching for repeated analyses (already implemented for npm/OSV data)
+
+**Security:**
+- Never commit API keys to repository
+- Use environment variables for all sensitive configuration
+- Rotate API keys if exposed
+- Monitor API usage for suspicious activity
+- Verify HTTPS is enforced on all deployments
 
 ---
 
