@@ -216,6 +216,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Content-Type must be application/json' });
   }
 
+  // Extract user-provided API key from Authorization header
+  const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+  const userApiKey = authHeader && authHeader.startsWith('Bearer ') 
+    ? authHeader.substring(7) 
+    : null;
+  console.log('[serverless] User-provided API key:', userApiKey ? 'Present' : 'Not present');
+
   // Determine AI provider with backward compatibility
   let provider = process.env.VITE_AI_PROVIDER;
   
@@ -235,22 +242,43 @@ export default async function handler(req, res) {
     });
   }
 
+  // Detect provider/key mismatch if user provided a key
+  if (userApiKey) {
+    const looksLikeOpenRouter = userApiKey.startsWith('sk-or-');
+    const looksLikeOpenAI = userApiKey.startsWith('sk-') && !userApiKey.startsWith('sk-or-');
+
+    if (provider === 'openai' && looksLikeOpenRouter) {
+      console.error('[serverless] Provider/key mismatch: OpenAI provider with OpenRouter key');
+      return res.status(400).json({
+        error: 'API key mismatch: You provided an OpenRouter API key, but the server is configured for OpenAI. Please use an OpenAI API key or contact support to switch providers.'
+      });
+    }
+
+    if (provider === 'openrouter' && looksLikeOpenAI) {
+      console.error('[serverless] Provider/key mismatch: OpenRouter provider with OpenAI key');
+      return res.status(400).json({
+        error: 'API key mismatch: You provided an OpenAI API key, but the server is configured for OpenRouter. Please use an OpenRouter API key or contact support to switch providers.'
+      });
+    }
+  }
+
   // Configure provider-specific settings
   let baseURL;
   let apiKey;
   let headers;
 
   if (provider === 'openrouter') {
-    // Validate OpenRouter API key
-    if (!process.env.OPENROUTER_API_KEY) {
-      console.error('[serverless] OPENROUTER_API_KEY environment variable not set');
+    baseURL = 'https://openrouter.ai/api/v1/chat/completions';
+    apiKey = userApiKey || process.env.OPENROUTER_API_KEY;
+    
+    // Validate API key is available
+    if (!apiKey) {
+      console.error('[serverless] OPENROUTER_API_KEY environment variable not set and no user API key provided');
       return res.status(500).json({ 
-        error: 'Server configuration error: OPENROUTER_API_KEY is not set' 
+        error: 'Server configuration error: OPENROUTER_API_KEY is not set and no user API key provided' 
       });
     }
 
-    baseURL = 'https://openrouter.ai/api/v1/chat/completions';
-    apiKey = process.env.OPENROUTER_API_KEY;
     headers = {
       'Authorization': `Bearer ${apiKey}`,
       'HTTP-Referer': process.env.VITE_SITE_URL || '',
@@ -259,22 +287,24 @@ export default async function handler(req, res) {
     };
   } else {
     // Default to OpenAI
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('[serverless] OPENAI_API_KEY environment variable not set');
+    baseURL = 'https://api.openai.com/v1/chat/completions';
+    apiKey = userApiKey || process.env.OPENAI_API_KEY;
+    
+    // Validate API key is available
+    if (!apiKey) {
+      console.error('[serverless] OPENAI_API_KEY environment variable not set and no user API key provided');
       return res.status(500).json({ 
-        error: 'Server configuration error: OPENAI_API_KEY not set' 
+        error: 'Server configuration error: OPENAI_API_KEY not set and no user API key provided' 
       });
     }
 
-    baseURL = 'https://api.openai.com/v1/chat/completions';
-    apiKey = process.env.OPENAI_API_KEY;
     headers = {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json'
     };
   }
 
-  console.log('[serverless] Using AI provider:', provider);
+  console.log('[serverless] Using AI provider:', provider, 'with', userApiKey ? 'user-provided' : 'server', 'API key');
 
   // Parse and validate request body
   const { packageData, vulnerabilities, model: requestedModel } = req.body;
@@ -367,7 +397,7 @@ export default async function handler(req, res) {
 
       if (status === 401) {
         return res.status(401).json({ 
-          error: `${provider} API authentication failed. Please check server configuration.` 
+          error: 'API authentication failed. Please check your API key in settings or contact support.' 
         });
       }
 

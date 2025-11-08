@@ -13,6 +13,9 @@ const MODEL_OPTIONS = [
   { value: 'mistralai/mistral-large', label: 'Mistral Large' }
 ];
 
+// Popular npm packages for quick testing
+const EXAMPLE_PACKAGES = ['react', 'lodash', 'express', 'axios', 'typescript', 'webpack'];
+
 /**
  * Form component for entering npm package names to analyze with model selection
  * @param {function} onAnalysisComplete - Callback function that receives the report object when analysis succeeds
@@ -44,11 +47,13 @@ function InspectorForm({ onAnalysisComplete, onAnalysisStart, selectedModel, onM
     onModelChange(event.target.value);
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  // Core analysis logic extracted for reuse
+  const performAnalysis = async (name) => {
+    // Guard against concurrent submissions
+    if (isLoading) return;
 
     // Validate package name is not empty
-    const trimmedName = packageName.trim();
+    const trimmedName = name.trim();
     if (trimmedName.length === 0) {
       setError('Please enter a package name');
       return;
@@ -59,19 +64,37 @@ function InspectorForm({ onAnalysisComplete, onAnalysisStart, selectedModel, onM
     setIsLoading(true);
     setError(null);
 
+    let report;
     try {
-      const report = await inspectPackage(trimmedName, selectedModel);
-      onAnalysisComplete?.(report);
-      setIsLoading(false);
+      report = await inspectPackage(trimmedName, selectedModel);
     } catch (error) {
       console.error('[InspectorForm] Analysis failed:', error);
       setError(error.message || 'Failed to analyze package. Please try again.');
+    } finally {
       setIsLoading(false);
     }
+
+    // Call parent callback outside try/catch to avoid treating parent errors as analysis failures
+    if (report) {
+      onAnalysisComplete?.(report);
+    }
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (isLoading) return;
+    await performAnalysis(packageName);
   };
 
   const handleErrorDismiss = () => {
     setError(null);
+  };
+
+  const handleExampleClick = async (examplePackageName) => {
+    if (isLoading) return;
+    setPackageName(examplePackageName);
+    setError(null);
+    await performAnalysis(examplePackageName);
   };
 
   return (
@@ -79,15 +102,18 @@ function InspectorForm({ onAnalysisComplete, onAnalysisStart, selectedModel, onM
       <label htmlFor="package-name-input">
         Package Name
       </label>
-      <input
-        type="text"
-        id="package-name-input"
-        value={packageName}
-        onChange={handleInputChange}
-        placeholder="Enter package name (e.g., lodash or @babel/core)"
-        disabled={isLoading}
-        aria-label="Package name input"
-      />
+      <div className="input-with-prompt">
+        <span className="terminal-prompt" aria-hidden="true">&gt;&gt;</span>
+        <input
+          type="text"
+          id="package-name-input"
+          value={packageName}
+          onChange={handleInputChange}
+          placeholder="Enter package name (e.g., lodash or @babel/core)"
+          disabled={isLoading}
+          aria-label="Package name input"
+        />
+      </div>
       <label htmlFor="model-select">
         AI Model
       </label>
@@ -111,6 +137,23 @@ function InspectorForm({ onAnalysisComplete, onAnalysisStart, selectedModel, onM
       >
         {isLoading ? 'Analyzing...' : 'Inspect'}
       </button>
+      <div className="example-packages">
+        <p className="example-packages-label">Quick Examples:</p>
+        <div className="example-packages-buttons">
+          {EXAMPLE_PACKAGES.map((pkg) => (
+            <button
+              key={pkg}
+              type="button"
+              className="example-package-button"
+              onClick={() => handleExampleClick(pkg)}
+              disabled={isLoading}
+              aria-label={`Try ${pkg} package`}
+            >
+              {pkg}
+            </button>
+          ))}
+        </div>
+      </div>
       {error && <ErrorMessage message={error} onDismiss={handleErrorDismiss} />}
       {isLoading && <LoadingSpinner />}
     </form>

@@ -1,7 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import InspectorForm from './components/InspectorForm';
 import NutritionLabel from './components/NutritionLabel';
+import Settings from './components/Settings';
 import './styles/App.css';
+
+// Constants
+const DEFAULT_MODEL = 'moonshotai/kimi-k2-thinking';
+const LS_MODEL_KEY = 'inspector-selected-model';
 
 /**
  * Root application component that orchestrates package analysis workflow
@@ -11,7 +16,42 @@ export default function App() {
   // State declarations
   const [report, setReport] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('moonshotai/kimi-k2-thinking');
+  const [selectedModel, setSelectedModel] = useState(() => {
+    // Guard for non-browser contexts (SSR/prerender)
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      console.log('[App] localStorage unavailable, using default model');
+      return DEFAULT_MODEL;
+    }
+
+    try {
+      const storedModel = localStorage.getItem(LS_MODEL_KEY);
+      if (storedModel) {
+        console.log('[App] Restored model from localStorage:', storedModel);
+        return storedModel;
+      }
+      console.log('[App] No stored model found, using default');
+      return DEFAULT_MODEL;
+    } catch (error) {
+      console.error('[App] Failed to read from localStorage:', error);
+      return DEFAULT_MODEL;
+    }
+  });
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Effect hooks
+  useEffect(() => {
+    // Guard for non-browser contexts (SSR/prerender)
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
+
+    try {
+      localStorage.setItem(LS_MODEL_KEY, selectedModel);
+      console.log('[App] Saved model to localStorage:', selectedModel);
+    } catch (error) {
+      console.error('[App] Failed to save to localStorage:', error);
+    }
+  }, [selectedModel]);
 
   // Event handlers
   const handleAnalysisStart = () => {
@@ -42,11 +82,27 @@ export default function App() {
     console.log('[App] Model changed to:', model);
   };
 
+  const handleSettingsOpen = () => {
+    setIsSettingsOpen(true);
+  };
+
+  const handleSettingsClose = () => {
+    setIsSettingsOpen(false);
+  };
+
   return (
     <div className="app">
       <header className="app-header">
         <h1>The Inspector</h1>
         <p>X-ray vision for npm packages</p>
+        <button
+          className="settings-toggle"
+          onClick={handleSettingsOpen}
+          aria-label="Open settings"
+          title="Settings"
+        >
+          ⚙
+        </button>
       </header>
       <main className="app-main">
         <InspectorForm
@@ -57,6 +113,7 @@ export default function App() {
         />
         {report && <NutritionLabel report={report} />}
       </main>
+      <Settings isOpen={isSettingsOpen} onClose={handleSettingsClose} />
     </div>
   );
 }

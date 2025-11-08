@@ -231,7 +231,15 @@ function _mapAxiosError(error, packageName) {
     if (status === 401) {
       return _createErrorObject(
         'INVALID_API_KEY',
-        'Server configuration error. Please contact support.',
+        'Invalid API Key. Please check your key in the settings.',
+        error
+      );
+    }
+
+    if (status === 403) {
+      return _createErrorObject(
+        'INVALID_API_KEY',
+        'Invalid API Key. Please check your key in the settings.',
         error
       );
     }
@@ -296,7 +304,34 @@ function _mapAxiosError(error, packageName) {
 }
 
 /**
+ * Retrieves the user's stored API key from localStorage
+ * @returns {string|null} Decoded API key or null if not found
+ */
+function _getStoredApiKey() {
+  // Guard against SSR/test contexts where localStorage is not available
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+    return null;
+  }
+
+  try {
+    const encodedKey = localStorage.getItem('inspector-api-key');
+    if (!encodedKey) {
+      return null;
+    }
+    return atob(encodedKey);
+  } catch (error) {
+    console.error('[ai] Failed to decode stored API key:', error);
+    return null;
+  }
+}
+
+/**
  * Generates an AI-powered plain-English summary of package security and complexity
+ * 
+ * This function will use a user-provided API key from localStorage if available.
+ * The key is retrieved from localStorage with the key 'inspector-api-key'.
+ * If no user key is found, the serverless function will use its default environment variable configuration.
+ * 
  * @param {Object} packageData - Package metadata from npm.js with name, version, dependencies, license
  * @param {Array<Object>} vulnerabilities - Array of vulnerability objects from osv.js with package, id, severity, summary
  * @param {string} [model] - Optional AI model to use (e.g., 'moonshotai/kimi-k2-thinking', 'openai/gpt-4o'). Falls back to VITE_DEFAULT_MODEL or backend default if not provided
@@ -357,10 +392,15 @@ async function generateSummary(packageData, vulnerabilities, model = null, timeo
       const endpoint = useFallback ? FALLBACK_ENDPOINT : SERVERLESS_ENDPOINT;
       console.log('[ai] Using endpoint:', endpoint);
 
+      // Retrieve user-provided API key if available
+      const userApiKey = _getStoredApiKey();
+      console.log('[ai] User API key:', userApiKey ? 'Found' : 'Not found');
+
       // Make request to serverless endpoint
       const response = await axios.post(endpoint, requestBody, {
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(userApiKey ? { 'Authorization': `Bearer ${userApiKey}` } : {})
         },
         timeout
       });

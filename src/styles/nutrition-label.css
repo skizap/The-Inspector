@@ -6,15 +6,14 @@
   margin: var(--spacing-2xl) auto 0;
   padding: var(--spacing-xl);
   background: var(--color-surface);
-  border: 3px solid var(--color-text);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
+  border: 3px solid var(--color-primary);
+  box-shadow: 0 0 30px rgba(255, 140, 0, 0.5), inset 0 0 50px rgba(255, 140, 0, 0.05);
 }
 
 .nutrition-section {
   margin-bottom: var(--spacing-xl);
   padding-bottom: var(--spacing-xl);
-  border-bottom: 2px solid var(--color-text);
+  border-bottom: 2px solid var(--color-primary);
 }
 
 .nutrition-section:last-of-type {
@@ -43,7 +42,7 @@
 .nutrition-section h3 {
   font-size: var(--font-size-xl);
   margin-bottom: var(--spacing-md);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 2px solid var(--color-primary);
   padding-bottom: var(--spacing-sm);
 }
 
@@ -59,6 +58,7 @@
   font-weight: 700;
   color: var(--color-primary);
   line-height: 1;
+  text-shadow: 0 0 10px var(--color-primary);
 }
 
 .version {
@@ -76,9 +76,8 @@
 .license-badge {
   display: inline-block;
   padding: var(--spacing-xs) var(--spacing-sm);
-  background: var(--color-background);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  background: rgba(255, 140, 0, 0.1);
+  border: 1px solid var(--color-primary);
   font-size: var(--font-size-sm);
   margin-left: var(--spacing-sm);
 }
@@ -104,22 +103,24 @@
 .status-badge {
   display: inline-block;
   padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
   font-size: var(--font-size-sm);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  border: 1px solid currentColor;
+  box-shadow: 0 0 5px currentColor;
 }
 
 .severity-badge {
   display: inline-block;
   padding: var(--spacing-xs) var(--spacing-sm);
   color: white;
-  border-radius: var(--radius-sm);
   font-size: var(--font-size-sm);
   font-weight: 600;
   margin-right: var(--spacing-sm);
   margin-bottom: var(--spacing-xs);
+  border: 1px solid currentColor;
+  box-shadow: 0 0 5px currentColor;
 }
 
 /* Vulnerability Styles */
@@ -132,8 +133,7 @@
   padding: var(--spacing-md);
   margin-bottom: var(--spacing-md);
   border-left: 4px solid;
-  border-radius: var(--radius-sm);
-  background: var(--color-background);
+  background: rgba(255, 140, 0, 0.05);
 }
 
 .vulnerability-item > strong {
@@ -159,18 +159,22 @@
 
 .vulnerability-item.critical {
   border-left-color: var(--color-critical);
+  box-shadow: 0 0 6px var(--color-critical);
 }
 
 .vulnerability-item.high {
   border-left-color: var(--color-high);
+  box-shadow: 0 0 6px var(--color-high);
 }
 
 .vulnerability-item.medium {
   border-left-color: var(--color-medium);
+  box-shadow: 0 0 6px var(--color-medium);
 }
 
 .vulnerability-item.low {
   border-left-color: var(--color-low);
+  box-shadow: 0 0 6px var(--color-low);
 }
 
 .vuln-summary {
@@ -191,7 +195,7 @@
   padding: var(--spacing-md);
   background: rgba(34, 197, 94, 0.1);
   color: #16A34A;
-  border-radius: var(--radius-md);
+  border: 2px solid #16A34A;
   text-align: center;
   font-weight: 600;
 }
@@ -201,13 +205,13 @@
   font-size: var(--font-size-2xl);
   font-weight: 700;
   margin-bottom: var(--spacing-md);
+  text-shadow: 0 0 15px currentColor;
 }
 
 .ai-unavailable {
   padding: var(--spacing-md);
-  background: var(--color-background);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  background: rgba(255, 140, 0, 0.05);
+  border: 2px solid var(--color-border);
   color: var(--color-text-secondary);
   text-align: center;
 }
@@ -216,7 +220,7 @@
 .nutrition-footer {
   margin-top: var(--spacing-xl);
   padding-top: var(--spacing-md);
-  border-top: 1px solid var(--color-border);
+  border-top: 2px solid var(--color-primary);
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   text-align: center;
@@ -249,15 +253,14 @@
   max-height: 400px;
   overflow-y: auto;
   overflow-x: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border: 2px solid var(--color-primary);
   padding: var(--spacing-sm);
-  background: var(--color-background);
+  background: rgba(26, 26, 26, 0.5);
 }
 
 .tree-root {
   list-style: none;
-  border-left: 2px solid var(--color-border);
+  border-left: 2px solid var(--color-primary);
   padding-left: var(--spacing-lg);
   margin: 0;
 }
@@ -266,9 +269,9 @@
   position: relative;
   padding-left: var(--spacing-md);
   margin-bottom: var(--spacing-sm);
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-family);
   font-size: var(--font-size-sm);
-  color: var(--color-text);
+  color: var(--color-text-secondary);
   transition: background-color 0.2s;
 }
 
@@ -278,13 +281,13 @@
   left: 0;
   top: 50%;
   width: var(--spacing-md);
-  border-top: 2px solid var(--color-border);
+  border-top: 2px solid var(--color-primary);
 }
 
 .tree-node:hover {
   background: var(--color-surface);
-  border-radius: var(--radius-sm);
   padding-right: var(--spacing-sm);
+  box-shadow: 0 0 5px rgba(255, 140, 0, 0.3);
 }
 
 /* Nested tree levels */
@@ -303,23 +306,24 @@
 .export-button {
   padding: var(--spacing-sm) var(--spacing-md);
   background: var(--color-primary);
-  color: white;
-  border: none;
-  border-radius: var(--radius-md);
+  color: var(--color-background);
+  border: 2px solid var(--color-primary);
   font-size: var(--font-size-base);
   font-weight: 600;
+  font-family: var(--font-family);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .export-button:hover:not(:disabled) {
-  background: #1E3A8A;
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  background: var(--color-accent);
+  box-shadow: 0 0 15px var(--color-primary);
 }
 
 .export-button:disabled {
   background: var(--color-secondary);
+  border-color: var(--color-secondary);
+  color: var(--color-text);
   cursor: not-allowed;
   opacity: 0.6;
 }
@@ -329,8 +333,7 @@
   top: calc(100% + var(--spacing-xs));
   right: 0;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border: 2px solid var(--color-primary);
   box-shadow: var(--shadow-lg);
   z-index: 10;
   min-width: 200px;
@@ -348,14 +351,15 @@
   transition: background-color 0.2s;
   font-size: var(--font-size-base);
   color: var(--color-text);
+  font-family: var(--font-family);
 }
 
 .export-menu button:hover {
-  background: var(--color-background);
+  background: rgba(255, 140, 0, 0.1);
 }
 
 .export-menu button:not(:last-child) {
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 2px solid var(--color-primary);
 }
 
 /* Responsive Styles */
