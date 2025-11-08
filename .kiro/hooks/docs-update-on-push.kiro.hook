@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "name": "Documentation Updater",
+  "description": "Automatically creates and updates project documentation in the docs/ folder whenever changes are pushed to GitHub",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      ".git/refs/heads/main",
+      ".git/refs/heads/master",
+      ".git/FETCH_HEAD"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A git push has been detected. Please perform the following tasks:\n\n1. Create a 'docs/' folder if it doesn't exist\n2. Generate/update comprehensive project documentation including:\n   - docs/README.md - Project overview, setup instructions, and usage guide\n   - docs/ARCHITECTURE.md - System architecture, component structure, and data flow\n   - docs/API.md - API endpoints, functions, and integration details\n   - docs/DEVELOPMENT.md - Development workflow, coding standards, and contribution guidelines\n   - docs/DEPLOYMENT.md - Deployment instructions and environment configuration\n3. Ensure all documentation is up-to-date with the current codebase\n4. Include code examples, diagrams (in text format), and clear explanations\n5. Make documentation accessible for both new contributors and experienced developers\n\nReview the entire project structure, source code, and existing documentation files to create comprehensive, accurate, and well-organized documentation."
+  }
+}
