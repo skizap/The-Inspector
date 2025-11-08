@@ -146,7 +146,15 @@ function _mapAxiosError(error, packageName) {
   if (error.response?.status === 404) {
     return _createErrorObject(
       'PACKAGE_NOT_FOUND',
-      `Package '${packageName}' not found. Please check the package name.`,
+      'Package not found. Please check the name and try again.',
+      error
+    );
+  }
+  // 408 Request Timeout
+  if (error.response?.status === 408) {
+    return _createErrorObject(
+      'TIMEOUT_ERROR',
+      'Analysis timed out. This can happen with very large packages. Please try again.',
       error
     );
   }
@@ -154,7 +162,7 @@ function _mapAxiosError(error, packageName) {
   if (error.code === 'ECONNABORTED') {
     return _createErrorObject(
       'TIMEOUT_ERROR',
-      'Request timed out. The package may be too large. Please try again.',
+      'Analysis timed out. This can happen with very large packages. Please try again.',
       error
     );
   }

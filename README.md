@@ -6,10 +6,12 @@
 
 ```bash
 npm install
-npm run dev
+npm start
 ```
 
-Visit `http://localhost:5173` and enter any npm package name to generate a comprehensive "Nutrition Label" report.
+The application will automatically open in your browser. Enter any npm package name to generate a comprehensive "Nutrition Label" report.
+
+*Alternatively, use `npm run dev` if you prefer to manually open your browser.*
 
 ## Features
 

@@ -275,13 +275,21 @@ function _mapAxiosError(error, packageName) {
         error
       );
     }
+
+    if (status === 408) {
+      return _createErrorObject(
+        'TIMEOUT_ERROR',
+        'Analysis timed out. This can happen with very large packages. Please try again.',
+        error
+      );
+    }
   }
 
   // Timeout error
   if (error.code === 'ECONNABORTED') {
     return _createErrorObject(
       'TIMEOUT_ERROR',
-      'Request timed out. AI analysis may take longer for complex packages.',
+      'Analysis timed out. This can happen with very large packages. Please try again.',
       error
     );
   }
