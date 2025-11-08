@@ -41,13 +41,19 @@ the-inspector/
 │   └── main.js
 ├── public/
 │   └── index.html
+├── docs/
+│   ├── README.md
+│   ├── DEPLOYMENT.md
+│   ├── DEMO_SCRIPT.md
+│   ├── HACKATHON_WRITEUP.md
+│   ├── project-guide.md
+│   ├── kiro-knowledge-asset.md
+│   └── openrouter-reference.md
 ├── .env.example
 ├── .gitignore
 ├── package.json
 ├── vite.config.js
-├── README.md
-├── DEMO_SCRIPT.md
-└── HACKATHON_WRITEUP.md
+└── README.md
 ```
 
 ## Directory Purposes
@@ -98,6 +104,17 @@ CSS stylesheets.
 - Global styles in App.css
 - Use CSS Grid and Flexbox for layouts (no CSS frameworks)
 - Responsive design for mobile devices
+
+### `docs/`
+Project documentation and knowledge assets.
+
+- **README.md**: Complete project documentation with setup, usage, and architecture details
+- **DEPLOYMENT.md**: Deployment guides for Vercel and Netlify with environment configuration
+- **DEMO_SCRIPT.md**: Hackathon presentation script and demo walkthrough
+- **HACKATHON_WRITEUP.md**: Kiroween submission writeup with project overview and learnings
+- **project-guide.md**: Executive summary, architecture, and development strategy
+- **kiro-knowledge-asset.md**: Kiro IDE capabilities, best practices, and project-specific guidance
+- **openrouter-reference.md**: OpenRouter API integration reference and examples
 
 ## File Naming Conventions
 
