@@ -5,7 +5,7 @@ import Settings from './components/Settings';
 import './styles/App.css';
 
 // Constants
-const DEFAULT_MODEL = 'moonshotai/kimi-k2-thinking';
+const DEFAULT_MODEL = 'openai/gpt-5-codex';
 const LS_MODEL_KEY = 'inspector-selected-model';
 
 /**

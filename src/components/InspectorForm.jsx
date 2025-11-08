@@ -5,12 +5,15 @@ import LoadingSpinner from './LoadingSpinner.jsx';
 
 // Model options for AI analysis
 const MODEL_OPTIONS = [
-  { value: 'moonshotai/kimi-k2-thinking', label: 'Moonshot Kimi K2 Thinking (Recommended)' },
-  { value: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
-  { value: 'openai/gpt-4o', label: 'OpenAI GPT-4o' },
-  { value: 'google/gemini-2.0-flash-exp:free', label: 'Google Gemini Flash (Free)' },
-  { value: 'meta-llama/llama-3.1-70b-instruct', label: 'Meta Llama 3.1 70B' },
-  { value: 'mistralai/mistral-large', label: 'Mistral Large' }
+  { value: 'openai/gpt-5-codex', label: 'GPT-5 Codex (Recommended)' },
+  { value: 'anthropic/claude-sonnet-4.5', label: 'Claude Sonnet 4.5' },
+  { value: 'openai/gpt-5', label: 'GPT-5' },
+  { value: 'anthropic/claude-haiku-4.5', label: 'Claude Haiku 4.5' },
+  { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+  { value: 'deepseek/deepseek-chat', label: 'DeepSeek Chat V3' },
+  { value: 'moonshotai/kimi-k2-thinking', label: 'Moonshot Kimi K2 Thinking' },
+  { value: 'deepseek/deepseek-r1-distill-llama-70b:free', label: 'DeepSeek R1 Distill 70B (Free)' },
+  { value: 'google/gemini-2.0-flash-exp:free', label: 'Google Gemini 2.0 Flash Exp (Free)' }
 ];
 
 // Popular npm packages for quick testing
@@ -36,6 +39,15 @@ function InspectorForm({ onAnalysisComplete, onAnalysisStart, selectedModel, onM
   const [packageName, setPackageName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Validate selectedModel on mount and correct if invalid
+  React.useEffect(() => {
+    const isValidModel = MODEL_OPTIONS.some(option => option.value === selectedModel);
+    if (!isValidModel) {
+      console.warn(`[InspectorForm] Invalid model "${selectedModel}", defaulting to ${MODEL_OPTIONS[0].value}`);
+      onModelChange(MODEL_OPTIONS[0].value);
+    }
+  }, [selectedModel, onModelChange]);
 
   // Event handlers
   const handleInputChange = (event) => {
