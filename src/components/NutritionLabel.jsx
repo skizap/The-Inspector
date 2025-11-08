@@ -1,6 +1,6 @@
 import React from 'react';
-import DependencyTree from './DependencyTree';
-import ExportButton from './ExportButton';
+import DependencyTree from './DependencyTree.jsx';
+import ExportButton from './ExportButton.jsx';
 import '../styles/nutrition-label.css';
 
 /**

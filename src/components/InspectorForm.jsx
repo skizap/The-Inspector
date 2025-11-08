@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { inspectPackage } from '../utils/inspector.js';
-import ErrorMessage from './ErrorMessage.js';
-import LoadingSpinner from './LoadingSpinner.js';
+import ErrorMessage from './ErrorMessage.jsx';
+import LoadingSpinner from './LoadingSpinner.jsx';
 
 // Model options for AI analysis
 const MODEL_OPTIONS = [
