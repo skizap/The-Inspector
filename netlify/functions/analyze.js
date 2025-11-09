@@ -8,7 +8,9 @@ import { VALID_OPENROUTER_MODELS } from '../../src/constants/openrouterModels.js
 
 // Constants
 // Note: baseURL and model are determined dynamically based on provider
-const DEFAULT_TIMEOUT = 30000;
+// Timeout set to 8 seconds to work within Netlify Free tier's 10s function limit
+// (leaving 2s buffer for function initialization and response processing)
+const DEFAULT_TIMEOUT = 8000;
 const MAX_TOKENS = 1000;
 const TEMPERATURE = 0.7;
 

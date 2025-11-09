@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/skizap/The-Inspector.git"
   },
-  "homepage": "https://the-inspector.vercel.app",
+  "homepage": "https://the-inspector.netlify.app",
   "bugs": {
     "url": "https://github.com/skizap/The-Inspector/issues"
   },

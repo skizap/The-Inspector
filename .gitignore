@@ -31,6 +31,9 @@ dist-ssr
 # Vercel CLI cache
 .vercel
 
+# Netlify CLI cache
+.netlify
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
