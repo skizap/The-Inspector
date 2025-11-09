@@ -8,7 +8,7 @@
 
 **Script:**
 ```
-Hi! I'm [Your Name], and this is The Inspector—an X-ray tool for npm packages.
+Hi! I'm skizap, and this is The Inspector—an X-ray tool for npm packages.
 
 Before installing any package, wouldn't you want to know:
 - What dependencies it brings in?
@@ -39,14 +39,14 @@ Let's analyze a popular package: lodash.
 The Inspector fetches data from three sources:
 1. npm Registry - for package metadata
 2. OSV Database - for security vulnerabilities
-3. OpenAI GPT-4 - for AI-powered risk assessment
+3. AI models (OpenAI/OpenRouter) - for AI-powered risk assessment
 
 [Show loading spinner for 5-10 seconds]
 ```
 
 **On-Screen Text:**
 - "Analyzing lodash..."
-- "Fetching from npm, OSV, and OpenAI"
+- "Fetching from npm, OSV, and AI models"
 
 ### 2.2: Report Walkthrough (60 seconds)
 
@@ -194,8 +194,8 @@ Thank you!
 **On-Screen Text:**
 - "The Inspector"
 - "Built with Kiro IDE"
-- "GitHub: [Add your GitHub repository URL]"
-- "Live Demo: [Add your deployment URL]"
+- "GitHub: https://github.com/skizap/The-Inspector"
+- "Live Demo: https://the-inspector.vercel.app"
 
 ---
 
@@ -230,8 +230,8 @@ Thank you!
 5. Production-ready in 10 days (67% time reduction)
 
 ### Call to Action
-- Visit the live demo at [Add your deployment URL]
-- View source code on GitHub at [Add your GitHub repository URL]
+- Visit the live demo at https://the-inspector.vercel.app
+- View source code on GitHub at https://github.com/skizap/The-Inspector
 - Try analyzing your own packages
 
 ### Upload Platforms

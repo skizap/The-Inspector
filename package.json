@@ -3,6 +3,16 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "description": "X-ray vision for npm packages - analyze dependencies, detect vulnerabilities, and make informed decisions",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/skizap/The-Inspector.git"
+  },
+  "homepage": "https://the-inspector.vercel.app",
+  "bugs": {
+    "url": "https://github.com/skizap/The-Inspector/issues"
+  },
+  "license": "MIT",
   "scripts": {
     "start": "vite --open",
     "dev": "vite",

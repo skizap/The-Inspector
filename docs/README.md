@@ -1,8 +1,8 @@
 # The Inspector - Package Analysis Tool
 
-> **🚀 Live Demo:** [Add your deployment URL here after deploying]
+> **🚀 Live Demo:** [https://the-inspector.vercel.app](https://the-inspector.vercel.app)
 > 
-> **📦 Repository:** [Add your GitHub repository URL here]
+> **📦 Repository:** [https://github.com/skizap/The-Inspector](https://github.com/skizap/The-Inspector)
 
 ## Description
 
@@ -14,6 +14,8 @@ The Inspector is a developer utility that acts as an "X-ray" for open-source npm
 - **Vulnerability Scanning**: Identify known security vulnerabilities using the OSV database
 - **AI-Powered Risk Assessment**: Plain-English summaries powered by multiple AI providers (OpenAI and OpenRouter) with support for advanced reasoning models like Kimi K2 Thinking, Claude 3.5 Sonnet, and GPT-4o
 - **Model Selection**: Choose from 6 curated AI models via dropdown interface, including reasoning models, vision models, and cost-effective options
+- **User Preferences Persistence**: Automatic saving of model selection and optional API key storage in browser localStorage for seamless experience across sessions
+- **Quick Example Packages**: One-click analysis buttons for popular packages (react, lodash, express, axios, typescript, webpack)
 - **Dependency Visualization**: Interactive tree view of package dependencies
 - **Export Functionality**: Download reports as Markdown or PDF for team sharing
 - **Automated Auditing**: Agent Hook integration for automatic analysis when package.json changes
@@ -114,6 +116,32 @@ The hook automatically triggers after a 2-second debounce. Check `dependency_aud
 ---
 ```
 
+## User Preferences
+
+The Inspector automatically saves user preferences to provide a seamless experience across sessions.
+
+### Model Selection Persistence
+
+- **Automatic Saving**: Selected AI model is automatically saved to browser localStorage (key: `inspector-selected-model`)
+- **Automatic Restoration**: Model selection is restored on page load for consistent user experience
+- **Implementation**: Managed in `App.jsx` using React hooks and localStorage API
+- **No Configuration Required**: Works automatically without any user action
+
+### API Key Storage
+
+- **Settings Modal**: Access via the ⚙ icon in the application header
+- **Optional Storage**: Users can save their own OpenRouter or OpenAI API key
+- **Storage Location**: Stored in browser localStorage (key: `inspector-api-key`) with Base64 encoding for basic obfuscation
+- **Use Case**: Enables users to use their own API keys instead of relying on server-side keys
+- **Implementation**: Managed in `Settings.jsx` component
+- **Security Note**: Keys are stored locally in the browser and never transmitted except to the configured AI provider
+
+### Example Package Buttons
+
+- **Quick Access**: One-click analysis buttons in `InspectorForm.jsx` for instant analysis of popular packages
+- **No Typing Required**: Click a button to immediately analyze packages like react, lodash, express, axios, typescript, or webpack
+- **Time Saver**: Perfect for testing the application or quickly checking common dependencies
+
 ## Technology Stack
 
 - **Frontend**: React 18+ with functional components and hooks
@@ -129,11 +157,9 @@ The hook automatically triggers after a 2-second debounce. Check `dependency_aud
 
 1. Clone the repository:
 ```bash
-git clone [your-repository-url]
-cd the-inspector
+git clone https://github.com/skizap/The-Inspector.git
+cd The-Inspector
 ```
-
-Replace `[your-repository-url]` with your actual GitHub repository URL.
 
 2. Install dependencies:
 ```bash
@@ -334,7 +360,7 @@ The Inspector supports 6 curated AI models through a dropdown interface:
 1. **Moonshot Kimi K2 Thinking** (Recommended) - Advanced reasoning model with extended context
 2. **Claude 3.5 Sonnet** - Anthropic's latest model with strong analytical capabilities
 3. **OpenAI GPT-4o** - OpenAI's flagship model with multimodal support
-4. **Google Gemini Flash (Free)** - Fast, cost-effective model for quick analysis
+4. **Google Gemini 2.0 Flash (Free)** - Fast, cost-effective model for quick analysis
 5. **Meta Llama 3.1 70B** - Open-source model with strong performance
 6. **Mistral Large** - European AI model with competitive capabilities
 
@@ -346,7 +372,7 @@ The Inspector supports 6 curated AI models through a dropdown interface:
 
 **Model Selection Tips:**
 - Use **Kimi K2 Thinking** for complex packages with many dependencies (best reasoning)
-- Use **Gemini Flash** for quick analysis of simple packages (fastest, free)
+- Use **Gemini 2.0 Flash** for quick analysis of simple packages (fastest, free)
 - Use **GPT-4o** for balanced performance and quality
 - Use **Claude 3.5 Sonnet** for detailed security analysis
 

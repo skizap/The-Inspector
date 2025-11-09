@@ -25,9 +25,9 @@ Kiroween 2024 - Frankenstein Category
 
 **Lines of Code:** ~3,800 lines across 20+ files
 
-**Repository:** [Add your GitHub repository URL after creating the repository]
+**Repository:** https://github.com/skizap/The-Inspector
 
-**Live Demo:** [Add your deployment URL after deploying to Vercel/Netlify]
+**Live Demo:** https://the-inspector.vercel.app
 
 ## How Kiro Was Used
 
@@ -57,6 +57,7 @@ Created a master specification in `.kiro/specs/package-analysis-engine/` with th
 - Defined data flow sequence: npm API → dependency extraction → OSV API → AI API (OpenAI/OpenRouter) → unified report
 - Model selection UI: Dropdown with 6 curated models (Kimi K2, Claude 3.5, GPT-4o, Gemini Flash, Llama 3.1, Mistral Large)
 - Multi-provider routing: Backend dynamically routes to OpenAI or OpenRouter based on selected model
+- User preferences persistence: localStorage-based storage for model selection (key: `inspector-selected-model`) and optional API key storage (key: `inspector-api-key` with Base64 encoding). Settings modal accessible via ⚙ icon in header for API key management. Quick-access example buttons for popular packages (react, lodash, express, axios, typescript, webpack) in the analysis form.
 - Specified error handling strategy: critical failures (npm API) vs. non-critical failures (OSV, OpenAI)
 - Documented caching strategy: 1-hour TTL for npm and OSV, no caching for OpenAI
 
@@ -165,6 +166,34 @@ In `src/api/osv.js`, create an async function `checkVulnerabilities(dependencies
 - Prompt: "Refactor both serverless functions to support OpenAI and OpenRouter providers with dynamic model selection"
 - Generated: Provider determination logic, conditional configuration for baseURL/headers, model selection with fallback, backward compatibility
 - Key feature: Seamless switching between providers based on environment variables, with zero breaking changes
+
+**5. User Preferences Persistence (src/App.jsx, src/components/Settings.jsx, src/components/InspectorForm.jsx):**
+
+**Prompt:**
+```
+Add user preferences persistence: (1) Save selected AI model to localStorage and restore on page load, (2) Create a Settings modal for API key storage with Base64 encoding, (3) Add example package buttons for quick testing (react, lodash, express, axios, typescript, webpack). Follow #steering:code-conventions.md and #steering:security-policies.md.
+```
+
+**What Kiro Generated:**
+- Model selection persistence in `App.jsx` using React hooks (useState with lazy initialization, useEffect for localStorage sync)
+- Settings modal component in `Settings.jsx` with:
+  - Base64 encoding/decoding functions for API key obfuscation
+  - localStorage integration with key `inspector-api-key`
+  - Modal accessibility features (ESC key handling, focus trap, ARIA attributes)
+  - Input validation and user feedback
+- Example package buttons in `InspectorForm.jsx`:
+  - Six popular packages as one-click analysis triggers
+  - Shared analysis logic (performAnalysis function) for DRY code
+  - Disabled state during loading to prevent concurrent requests
+- Consistent error handling and logging across all three components
+- Full JSDoc documentation for all functions
+
+**Impact:**
+- User Experience: Seamless model selection persistence across sessions
+- Flexibility: Users can provide their own API keys instead of relying on server-side keys
+- Convenience: One-click analysis of popular packages for quick testing
+- Security: Base64 encoding provides basic obfuscation (not encryption, but better than plaintext)
+- Code Quality: Reusable analysis logic, proper React patterns, accessibility compliance
 
 **Context Providers Used:**
 - `#file`: Referenced existing files for consistency ("Follow the pattern in #src/api/npm.js")
@@ -619,6 +648,7 @@ The Inspector demonstrates the power of Kiro IDE's integrated approach to softwa
 - ✅ Zero major refactoring needed
 - ✅ Consistent codebase following project conventions
 - ✅ Multi-provider AI support (OpenAI and OpenRouter) with 6 curated models
+- ✅ User preferences persistence (model selection + API key storage + example buttons)
 - ✅ Model selection UI with advanced reasoning models (Kimi K2 Thinking)
 
 **Impact:**
@@ -637,14 +667,13 @@ Kiro IDE is not just a code generator—it's a development partner that understa
 ---
 
 **Project Links:**
-- **GitHub Repository:** [Add your GitHub repository URL]
-- **Live Demo:** [Add your deployment URL]
-- **Demo Video:** [Add your YouTube/Vimeo URL after recording]
+- **GitHub Repository:** https://github.com/skizap/The-Inspector
+- **Live Demo:** https://the-inspector.vercel.app
+- **Demo Video:** [To be added after demo video recording]
 - **Kiro IDE:** https://kiro.ai
 
 **Contact:**
-- **Developer:** [Your Name]
-- **Email:** [Your Email]
-- **Twitter/X:** [Your Handle]
+- **Developer:** skizap
+- **GitHub:** https://github.com/skizap
 
 **License:** MIT

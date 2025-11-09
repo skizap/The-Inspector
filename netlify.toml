@@ -13,6 +13,11 @@
 [build.environment]
   # Node.js version
   NODE_VERSION = "18"
+  
+  # Secrets scanning configuration
+  # These environment variables contain non-sensitive configuration values
+  # that appear in documentation and source code, so we exclude them from scanning
+  SECRETS_SCAN_OMIT_KEYS = "VITE_AI_PROVIDER,VITE_DEFAULT_MODEL,VITE_DEPLOY_PLATFORM,VITE_SITE_NAME,VITE_SITE_URL"
 
 # Serverless function configuration
 [functions]

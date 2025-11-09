@@ -1,7 +1,7 @@
 # OpenRouter API and SDK Reference for Traycer
 
 **Author:** Manus AI
-**Date:** Nov 06, 2025
+**Date:** Nov 08, 2025
 
 ## 1. Core Integration Concept: OpenAI-Compatible API
 
@@ -49,7 +49,23 @@ The format is typically `<provider>/<model_name>`. For free or experimental mode
 A good starting list of models to offer in the UI includes:
 
 | Model ID | Label for UI |
-| :--- | :--| `moonshotai/kimi-k2-thinking` | Moonshot Kimi K2 Thinking (Recommended) |\n| `anthropic/claude-3.5-sonnet` | Claude 3.5 Sonnet |\n| `openai/gpt-4o` | OpenAI GPT-4o |\n| `google/gemini-2.0-flash-exp:free` | Google Gemini Flash (Free) |\n| `meta-llama/llama-3.1-70b-instruct` | Meta Llama 3.1 70B |\n| `mistralai/mistral-large` | Mistral Large |### 2.3. Listing Models Programmatically
+| :--- | :--- |
+| `moonshotai/kimi-k2-thinking` | Moonshot Kimi K2 Thinking (Recommended) |
+| `anthropic/claude-3.5-sonnet` | Claude 3.5 Sonnet |
+| `openai/gpt-4o` | OpenAI GPT-4o |
+| `google/gemini-2.0-flash-exp:free` | Google Gemini Flash (Free) |
+| `meta-llama/llama-3.1-70b-instruct` | Meta Llama 3.1 70B |
+| `mistralai/mistral-large` | Mistral Large |
+
+### 2.3. Implementation Status
+
+All six models listed above have been implemented and validated in The Inspector application. The model list is maintained in two locations for consistency:
+- `src/config/models.js` - Frontend model options (MODEL_OPTIONS array)
+- `src/constants/openrouterModels.js` - Backend validation whitelist (VALID_OPENROUTER_MODELS array)
+
+The default model is automatically set to the first model in the list (Moonshot Kimi K2 Thinking), which can be overridden via the `VITE_DEFAULT_MODEL` environment variable.
+
+### 2.4. Listing Models Programmatically
 
 The OpenRouter API provides an endpoint to list all available models, which could be used to dynamically populate the model selection dropdown in the future. [4]
 

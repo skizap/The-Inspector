@@ -4,6 +4,8 @@ Complete reference guide for all Model Context Protocol (MCP) servers available 
 
 **Last Updated:** November 8, 2025
 
+> **⚠️ Important:** This guide was updated on November 8, 2025 to reflect the archival of Brave Search and GitHub MCP servers (archived May 29, 2025). Always verify server maintenance status before production use.
+
 ---
 
 ## Table of Contents
@@ -28,13 +30,21 @@ Complete reference guide for all Model Context Protocol (MCP) servers available 
 
 **Purpose:** Fast, privacy-focused web and local search engine integration.
 
-**Status:** ✅ Active
+**Status:** ⚠️ ARCHIVED (as of May 29, 2025)
+
+> **⚠️ DEPRECATION WARNING**
+> 
+> The Brave Search MCP server was archived on May 29, 2025 and is no longer maintained by the Model Context Protocol team. This server is provided as a historical reference only and should be used at your own risk. Security updates and bug fixes are no longer provided.
+> 
+> **Recommendation:** Consider using the Tavily MCP server (see below) as an alternative for web search functionality, as it provides similar capabilities and is actively maintained.
 
 **Available Tools:**
 - `brave_web_search` - General web search
 - `brave_local_search` - Local business and place search
 
 **Use Cases:**
+
+> **Note:** This documentation is preserved for historical reference. For production use, consider actively maintained alternatives.
 - Finding current information and news
 - Researching technical topics
 - Looking up documentation
@@ -66,6 +76,10 @@ Find coffee shops near Central Park
 **Purpose:** Advanced AI-powered search with web scraping, crawling, and content extraction capabilities.
 
 **Status:** ✅ Active
+
+> **✅ VERIFIED ACTIVE**
+> 
+> This server is officially maintained by Tavily and actively supported as of November 8, 2025. Recent updates include version 0.1.10 (June 2025) and official remote MCP endpoint support.
 
 **Available Tools:**
 - `tavily-search` - AI-enhanced web search with summarization
@@ -116,9 +130,20 @@ Map the structure of react.dev
 
 **Purpose:** Complete GitHub API integration for repository management, issues, PRs, and more.
 
-**Status:** ✅ Active
+**Status:** ⚠️ ARCHIVED (as of May 29, 2025)
+
+> **⚠️ DEPRECATION WARNING**
+> 
+> The GitHub MCP server was archived on May 29, 2025 and is no longer maintained by the Model Context Protocol team. This server is provided as a historical reference only and should be used at your own risk. Security updates and bug fixes are no longer provided.
+> 
+> **Recommendation:** For GitHub integration, consider:
+> - Using GitHub's official CLI (gh) with the Filesystem MCP server
+> - Exploring community-maintained GitHub MCP servers (verify maintenance status)
+> - Using GitHub's REST API directly via custom scripts
 
 **Available Tools:**
+
+> **Note:** This documentation is preserved for historical reference. The Docker-based server may still function but receives no updates or support.
 - Repository operations (create, fork, search)
 - Issue management (create, update, comment, search)
 - Pull request workflows (create, review, merge)
@@ -236,6 +261,10 @@ Relation:
 **Purpose:** Access up-to-date documentation for thousands of libraries and frameworks.
 
 **Status:** ✅ Active
+
+> **✅ VERIFIED ACTIVE**
+> 
+> This server is officially maintained by Upstash and actively supported as of November 8, 2025. Recent updates include version 1.0.13 and ongoing blog posts promoting the service.
 
 **Available Tools:**
 - `resolve-library-id` - Find library by name
@@ -512,6 +541,12 @@ API keys and secrets should be stored in the `env` object:
 - [Model Context Protocol Spec](https://modelcontextprotocol.io)
 - [MCP Server Registry](https://github.com/modelcontextprotocol/servers)
 
+### Archived Servers Repository
+- [MCP Archived Servers](https://github.com/modelcontextprotocol/servers-archived) - Historical reference for deprecated servers (read-only, use at own risk)
+
+### Community Server Directory
+- [Awesome MCP Servers](https://github.com/wong2/awesome-mcp-servers) - Curated list of community-maintained MCP servers (verify maintenance status before use)
+
 ### API Key Providers
 - [Brave Search API](https://brave.com/search/api)
 - [Tavily API](https://tavily.com)
@@ -529,20 +564,64 @@ API keys and secrets should be stored in the `env` object:
 ```json
 {
   "mcpServers": {
-    "brave-search": "✅ Active",
-    "tavily": "✅ Active",
-    "github": "✅ Active",
-    "memory": "✅ Active",
-    "context7": "✅ Active",
-    "filesystem": "✅ Active",
-    "sequentialthinking": "✅ Active"
+    "brave-search": "⚠️ ARCHIVED (May 29, 2025) - Use at own risk",
+    "tavily": "✅ Active (Verified Nov 8, 2025)",
+    "github": "⚠️ ARCHIVED (May 29, 2025) - Use at own risk",
+    "memory": "✅ Active (Reference Server)",
+    "context7": "✅ Active (Verified Nov 8, 2025)",
+    "filesystem": "✅ Active (Reference Server)",
+    "sequentialthinking": "✅ Active (Reference Server)"
   }
 }
 ```
 
-**Total Active Servers:** 7
+**Total Servers:** 7 (5 Active, 2 Archived)
 **Last Tested:** November 8, 2025
-**All Servers Status:** ✅ Working
+**Active Servers Status:** ✅ Working (Archived servers not recommended)
+
+---
+
+## Migration Guide for Archived Servers
+
+### Brave Search → Tavily
+
+If you were using Brave Search, migrate to Tavily for similar functionality:
+
+**Before (Brave Search):**
+```
+Search for "React hooks tutorial"
+```
+
+**After (Tavily):**
+```
+Search for "React hooks tutorial" with AI summary
+```
+
+**Benefits of Tavily:**
+- AI-enhanced search with automatic summarization
+- Additional tools: extract, crawl, map
+- Actively maintained with regular updates
+- More advanced filtering and search options
+
+### GitHub → Alternative Solutions
+
+If you were using the GitHub MCP server, consider these alternatives:
+
+**Option 1: GitHub CLI + Filesystem**
+- Install GitHub CLI: `gh` command
+- Use Filesystem MCP server to read/write files
+- Use `gh` commands for GitHub operations
+- Example: `gh pr list`, `gh issue create`
+
+**Option 2: Community GitHub Servers**
+- Check awesome-mcp-servers list for community-maintained alternatives
+- Verify maintenance status before adopting
+- Look for servers with recent commits and active issues
+
+**Option 3: Direct API Integration**
+- Use GitHub's REST API directly
+- Create custom scripts for common operations
+- More control but requires more setup
 
 ---
 

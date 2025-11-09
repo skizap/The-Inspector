@@ -54,20 +54,39 @@ Vercel CLI will ask several questions:
 
 **Step 5: Set Environment Variables**
 
-After deployment, set the required environment variables:
-```bash
-vercel env add OPENAI_API_KEY
-```
+Choose one provider path (OpenRouter recommended or OpenAI):
 
-Paste your OpenAI API key when prompted.
-Select "Production" environment.
-
+**Option A: OpenRouter (Recommended)**
 ```bash
+vercel env add VITE_AI_PROVIDER
+# Enter: openrouter
+
+vercel env add OPENROUTER_API_KEY
+# Paste your OpenRouter API key
+
+vercel env add VITE_DEFAULT_MODEL
+# Enter: moonshotai/kimi-k2-thinking
+
 vercel env add VITE_DEPLOY_PLATFORM
+# Enter: vercel
 ```
 
-Enter `vercel` when prompted.
-Select "Production" environment.
+**Option B: OpenAI**
+```bash
+vercel env add VITE_AI_PROVIDER
+# Enter: openai
+
+vercel env add OPENAI_API_KEY
+# Paste your OpenAI API key
+
+vercel env add VITE_DEFAULT_MODEL
+# Enter: gpt-4o
+
+vercel env add VITE_DEPLOY_PLATFORM
+# Enter: vercel
+```
+
+Select "Production" environment for all variables.
 
 **Step 6: Redeploy with Environment Variable**
 ```bash
@@ -76,7 +95,7 @@ vercel --prod
 
 **Step 7: Access Your Deployment**
 
-Vercel will provide a URL like: `https://the-inspector-xyz.vercel.app`
+Vercel will provide a URL like: `https://the-inspector.vercel.app` (your actual deployment URL)
 
 Open the URL in your browser to test the application.
 
@@ -104,22 +123,31 @@ git push origin main
 - **Install Command:** `npm install` (auto-detected)
 
 **Step 4: Add Environment Variables**
+
+Choose one provider path (OpenRouter recommended or OpenAI). Do not configure both.
+
+**Option A: OpenRouter (Recommended)**
 - Click "Environment Variables"
-- Add first variable:
-  - **Name:** `OPENAI_API_KEY`
-  - **Value:** [Your OpenAI API key]
-  - **Environment:** Production, Preview, Development (select all)
-- Click "Add"
-- Add second variable:
-  - **Name:** `VITE_DEPLOY_PLATFORM`
-  - **Value:** `vercel`
-  - **Environment:** Production, Preview, Development (select all)
-- Click "Add"
+- Add variables:
+  - **Name:** `VITE_AI_PROVIDER` | **Value:** `openrouter` | **Environment:** All
+  - **Name:** `OPENROUTER_API_KEY` | **Value:** [Your OpenRouter API key] | **Environment:** All
+  - **Name:** `VITE_DEFAULT_MODEL` | **Value:** `moonshotai/kimi-k2-thinking` | **Environment:** All
+  - **Name:** `VITE_DEPLOY_PLATFORM` | **Value:** `vercel` | **Environment:** All
+- Click "Add" after each variable
+
+**Option B: OpenAI**
+- Click "Environment Variables"
+- Add variables:
+  - **Name:** `VITE_AI_PROVIDER` | **Value:** `openai` | **Environment:** All
+  - **Name:** `OPENAI_API_KEY` | **Value:** [Your OpenAI API key] | **Environment:** All
+  - **Name:** `VITE_DEFAULT_MODEL` | **Value:** `gpt-4o` | **Environment:** All
+  - **Name:** `VITE_DEPLOY_PLATFORM` | **Value:** `vercel` | **Environment:** All
+- Click "Add" after each variable
 
 **Step 5: Deploy**
 - Click "Deploy"
 - Wait 2-3 minutes for build and deployment
-- Vercel will provide a URL like: `https://the-inspector-xyz.vercel.app`
+- Vercel will provide a URL like: `https://the-inspector.vercel.app` (your actual deployment URL)
 
 **Step 6: Test Deployment**
 - Open the deployment URL
@@ -174,8 +202,22 @@ netlify init
 - "Netlify functions folder" → `netlify/functions`
 
 **Step 5: Set Environment Variables**
+
+Choose one provider path (OpenRouter recommended or OpenAI):
+
+**Option A: OpenRouter (Recommended)**
 ```bash
+netlify env:set VITE_AI_PROVIDER openrouter
+netlify env:set OPENROUTER_API_KEY your_openrouter_api_key_here
+netlify env:set VITE_DEFAULT_MODEL moonshotai/kimi-k2-thinking
+netlify env:set VITE_DEPLOY_PLATFORM netlify
+```
+
+**Option B: OpenAI**
+```bash
+netlify env:set VITE_AI_PROVIDER openai
 netlify env:set OPENAI_API_KEY your_openai_api_key_here
+netlify env:set VITE_DEFAULT_MODEL gpt-4o
 netlify env:set VITE_DEPLOY_PLATFORM netlify
 ```
 
@@ -186,7 +228,7 @@ netlify deploy --prod
 
 **Step 7: Access Your Deployment**
 
-Netlify will provide a URL like: `https://the-inspector-xyz.netlify.app`
+Netlify will provide a URL like: `https://the-inspector-xyz.netlify.app` (example Netlify URL - yours will differ)
 
 ### Option 2: Deploy via Netlify Dashboard
 
@@ -211,13 +253,24 @@ git push origin main
 - **Functions directory:** `netlify/functions`
 
 **Step 4: Add Environment Variables**
+
+Choose one provider path (OpenRouter recommended or OpenAI). Do not configure both.
+
+**Option A: OpenRouter (Recommended)**
 - Click "Show advanced"
-- Click "New variable"
-- **Key:** `OPENAI_API_KEY`
-- **Value:** [Your OpenAI API key]
-- Click "New variable" again
-- **Key:** `VITE_DEPLOY_PLATFORM`
-- **Value:** `netlify`
+- Add variables:
+  - **Key:** `VITE_AI_PROVIDER` | **Value:** `openrouter`
+  - **Key:** `OPENROUTER_API_KEY` | **Value:** [Your OpenRouter API key]
+  - **Key:** `VITE_DEFAULT_MODEL` | **Value:** `moonshotai/kimi-k2-thinking`
+  - **Key:** `VITE_DEPLOY_PLATFORM` | **Value:** `netlify`
+
+**Option B: OpenAI**
+- Click "Show advanced"
+- Add variables:
+  - **Key:** `VITE_AI_PROVIDER` | **Value:** `openai`
+  - **Key:** `OPENAI_API_KEY` | **Value:** [Your OpenAI API key]
+  - **Key:** `VITE_DEFAULT_MODEL` | **Value:** `gpt-4o`
+  - **Key:** `VITE_DEPLOY_PLATFORM` | **Value:** `netlify`
 
 **Step 5: Deploy**
 - Click "Deploy site"
@@ -254,11 +307,11 @@ The frontend (`src/api/ai.js`) determines which endpoint to use via the `VITE_DE
    - Add `VITE_DEPLOY_PLATFORM=netlify` to your `.env` file
    - Run `netlify dev` to test locally
 
-**Auto-Detection Limitations:**
+**Endpoint Fallback Behavior:**
 
-The application includes automatic fallback logic that tries the primary endpoint first and falls back to the alternative on 404/network errors. However, this auto-detection only works reliably on default Netlify subdomains (e.g., `*.netlify.app`).
+The application includes automatic fallback logic that tries the primary endpoint first and falls back to the alternative on 404/network errors. This fallback attempts the alternate endpoint regardless of hostname.
 
-**For custom domains or production deployments, always set `VITE_DEPLOY_PLATFORM` explicitly to avoid unnecessary fallback attempts and ensure deterministic routing.**
+**For production deployments and custom domains, always set `VITE_DEPLOY_PLATFORM` explicitly to avoid unnecessary fallback attempts and ensure deterministic routing.**
 
 ### Vercel Configuration (vercel.json)
 
@@ -345,11 +398,14 @@ The Inspector supports multiple AI providers (OpenAI and OpenRouter). This secti
   - If neither is set, the application will fail with a configuration error
 - **Recommendation:** Set explicitly for production deployments to avoid ambiguity
 
-**Precedence Rules:**
-- User-selected model in UI determines provider when present (models prefixed with `openai/` route to OpenAI, others to OpenRouter)
-- If no model is passed in request, uses `VITE_AI_PROVIDER` setting
-- If `VITE_AI_PROVIDER` is unset and `OPENAI_API_KEY` exists, defaults to OpenAI
-- If both `OPENAI_API_KEY` and `OPENROUTER_API_KEY` exist but `VITE_AI_PROVIDER` is unset, defaults to OpenAI (backward compatibility)
+**Provider Determination:**
+- The `VITE_AI_PROVIDER` environment variable determines which AI service is used
+- If `VITE_AI_PROVIDER` is unset but `OPENAI_API_KEY` exists, defaults to `"openai"` (backward compatibility)
+- If both `OPENAI_API_KEY` and `OPENROUTER_API_KEY` exist but `VITE_AI_PROVIDER` is unset, defaults to `"openai"` (backward compatibility)
+- **Model Compatibility:**
+  - When `VITE_AI_PROVIDER='openrouter'`: All six curated models are valid (validated against `VALID_OPENROUTER_MODELS`)
+  - When `VITE_AI_PROVIDER='openai'`: Only native OpenAI model IDs are valid (e.g., `gpt-4o`, `gpt-4-turbo`)
+  - Selecting an incompatible model for the configured provider will result in an error
 
 #### 2. OpenAI Configuration (Conditional)
 
@@ -415,9 +471,10 @@ The Inspector supports multiple AI providers (OpenAI and OpenRouter). This secti
 - Sets the initial model selection in the UI dropdown
 - Users can change models via the UI dropdown after initial load
 - Prefixed with `VITE_` because it's used in browser code
+- **IMPORTANT:** Model must be compatible with your configured `VITE_AI_PROVIDER`
 - **Provider-Specific Examples:**
-  - OpenRouter: `"moonshotai/kimi-k2-thinking"`, `"anthropic/claude-3.5-sonnet"`, `"openai/gpt-4o"`
-  - OpenAI: `"gpt-4o"`, `"gpt-4-turbo"`
+  - OpenRouter (`VITE_AI_PROVIDER='openrouter'`): `"moonshotai/kimi-k2-thinking"`, `"anthropic/claude-3.5-sonnet"`, `"openai/gpt-4o"`, `"google/gemini-flash-1.5"`, `"meta-llama/llama-3.1-70b-instruct"`, `"mistralai/mistral-large"`
+  - OpenAI (`VITE_AI_PROVIDER='openai'`): `"gpt-4o"`, `"gpt-4-turbo"` (native OpenAI IDs only)
 
 **Setting in Vercel:**
 - Dashboard: Project Settings → Environment Variables
@@ -447,13 +504,13 @@ The Inspector supports multiple AI providers (OpenAI and OpenRouter). This secti
 - Enables app listing at: https://openrouter.ai/apps
 - Provides benefits like increased rate limits and visibility
 - **Example Values:**
-  - `VITE_SITE_URL`: Your deployment URL (e.g., `"https://the-inspector.vercel.app"`)
+  - `VITE_SITE_URL`: Your deployment URL (e.g., `"https://the-inspector.vercel.app"` for the actual deployment)
   - `VITE_SITE_NAME`: `"The Inspector"` (or custom name)
 
 **Setting in Vercel:**
 - Dashboard: Project Settings → Environment Variables
   - Name: `VITE_SITE_URL`
-  - Value: [Your deployment URL]
+  - Value: `https://the-inspector.vercel.app` (your actual deployment URL)
   - Environments: Production, Preview, Development (select all)
   - Name: `VITE_SITE_NAME`
   - Value: `The Inspector`
@@ -467,7 +524,7 @@ The Inspector supports multiple AI providers (OpenAI and OpenRouter). This secti
 **Setting in Netlify:**
 - Dashboard: Site Settings → Environment Variables
   - Key: `VITE_SITE_URL`
-  - Value: [Your deployment URL]
+  - Value: [Your Netlify deployment URL]
   - Key: `VITE_SITE_NAME`
   - Value: `The Inspector`
 - CLI:
@@ -484,7 +541,7 @@ The Inspector supports multiple AI providers (OpenAI and OpenRouter). This secti
 VITE_AI_PROVIDER=openrouter
 OPENROUTER_API_KEY=sk-or-v1-...
 VITE_DEFAULT_MODEL=moonshotai/kimi-k2-thinking
-VITE_SITE_URL=https://your-app.vercel.app
+VITE_SITE_URL=https://the-inspector.vercel.app
 VITE_SITE_NAME=The Inspector
 ```
 
@@ -546,19 +603,16 @@ The Inspector includes a model selection dropdown with 6 curated AI models:
 **How It Works:**
 - Users select their preferred model from the dropdown before analysis
 - The selected model is passed to the backend via the request body
-- Backend routes to the appropriate provider (OpenAI or OpenRouter) based on the model
+- Backend uses the provider configured via `VITE_AI_PROVIDER` environment variable
 - If no model is selected, the system uses `VITE_DEFAULT_MODEL` or provider-specific defaults
 
-**Precedence Rules:**
-- User-selected model in UI determines provider when present (models prefixed with `openai/` route to OpenAI, others to OpenRouter)
-- If no model is passed in request, uses `VITE_AI_PROVIDER` setting
-- If `VITE_AI_PROVIDER` is unset and `OPENAI_API_KEY` exists, defaults to OpenAI
-- If both `OPENAI_API_KEY` and `OPENROUTER_API_KEY` exist but `VITE_AI_PROVIDER` is unset, defaults to OpenAI (backward compatibility)
-
-**Model Routing:**
-- Models prefixed with `openai/` route to OpenAI API (requires `OPENAI_API_KEY`)
-- All other models route to OpenRouter API (requires `OPENROUTER_API_KEY`)
-- The backend handles provider selection automatically based on the model format
+**Provider Determination:**
+- The `VITE_AI_PROVIDER` environment variable determines which AI service is used
+- If `VITE_AI_PROVIDER` is unset but `OPENAI_API_KEY` exists, defaults to OpenAI (backward compatibility)
+- **Model Compatibility:**
+  - When `VITE_AI_PROVIDER='openrouter'`: All six curated models are valid
+  - When `VITE_AI_PROVIDER='openai'`: Only native OpenAI model IDs (e.g., `gpt-4o`) are valid
+  - Selecting an incompatible model for the configured provider will result in an error
 
 **Testing Model Selection:**
 1. Deploy with OpenRouter configuration (recommended)
@@ -579,8 +633,9 @@ The Inspector includes a model selection dropdown with 6 curated AI models:
 **Solution:**
 - Verify the correct API key is set based on your provider (`OPENAI_API_KEY` for OpenAI or `OPENROUTER_API_KEY` for OpenRouter)
 - Check that `VITE_AI_PROVIDER` matches your API key configuration
-- Review precedence rules: user-selected model determines provider; if no model passed, uses `VITE_AI_PROVIDER`; if unset with `OPENAI_API_KEY` present, defaults to OpenAI
-- Try different models from the dropdown to isolate provider-specific issues
+- Verify `VITE_AI_PROVIDER` is set correctly: `"openai"` or `"openrouter"`
+- If `VITE_AI_PROVIDER` is unset, the system defaults to OpenAI if `OPENAI_API_KEY` exists
+- Ensure selected model is compatible with your configured provider (OpenAI provider requires native OpenAI model IDs like `gpt-4o`)
 - For OpenRouter, verify your API key has sufficient credits at https://openrouter.ai/credits
 - Check environment variable name (no `VITE_` prefix for API keys)
 - Verify API key is valid (test at https://platform.openai.com or https://openrouter.ai)
@@ -595,7 +650,9 @@ The Inspector includes a model selection dropdown with 6 curated AI models:
 
 **Solution:**
 - Verify `VITE_DEFAULT_MODEL` is set correctly in environment variables
-- Check that the model format matches the provider (e.g., `openai/gpt-4o` for OpenAI, `anthropic/claude-3.5-sonnet` for OpenRouter)
+- Ensure `VITE_DEFAULT_MODEL` is compatible with your `VITE_AI_PROVIDER`:
+  - OpenRouter: Use any of the six curated models (e.g., `moonshotai/kimi-k2-thinking`)
+  - OpenAI: Use native OpenAI model IDs only (e.g., `gpt-4o`, not `openai/gpt-4o`)
 - Ensure the frontend was rebuilt after changing environment variables (`npm run build`)
 - Check browser console for JavaScript errors related to model selection
 - Verify the model is supported by your configured provider (check OpenRouter model list at https://openrouter.ai/models)
@@ -663,6 +720,15 @@ The Inspector includes a model selection dropdown with 6 curated AI models:
 - [ ] Error handling works (test with invalid package name)
 - [ ] Loading states are displayed
 - [ ] Responsive design works on mobile
+- [ ] User preferences: Selected model persists across page reloads (check localStorage key `inspector-selected-model`)
+- [ ] Settings modal: Click ⚙ icon in header to open Settings modal
+- [ ] Settings modal: Can save OpenRouter/OpenAI API key (stored in localStorage with Base64 encoding)
+- [ ] Settings modal (Vercel only): Saved API key is used for analysis instead of server-side key
+- [ ] Settings modal (Netlify): User-provided API key override not supported; server-side key always used
+- [ ] Settings modal: Can clear saved API key
+- [ ] Example package buttons: Six quick example buttons are displayed (react, lodash, express, axios, typescript, webpack)
+- [ ] Example package buttons: Clicking an example button auto-fills package name and starts analysis
+- [ ] Example package buttons: All six example packages analyze successfully
 
 **Performance Tests:**
 - [ ] First analysis completes in <30 seconds
@@ -671,7 +737,10 @@ The Inspector includes a model selection dropdown with 6 curated AI models:
 - [ ] No network errors in DevTools
 
 **Security Tests:**
-- [ ] OpenAI API key is NOT exposed in browser (check Network tab)
+- [ ] API keys (OpenAI/OpenRouter) are NOT exposed in browser (check Network tab)
+- [ ] User-provided API keys in Settings are Base64 encoded in localStorage (not plaintext)
+- [ ] User-provided API key override works on Vercel deployments (Authorization header sent)
+- [ ] User-provided API key override not supported on Netlify (server-side key always used)
 - [ ] HTTPS is enforced (check URL)
 - [ ] No sensitive data in console logs
 
@@ -725,7 +794,8 @@ After deployment, perform these tests to verify the OpenRouter integration:
 - [ ] Select "Google Gemini Flash" and analyze
 - [ ] Select "Meta Llama 3.1 70B" and analyze
 - [ ] Select "Mistral Large" and analyze
-- [ ] All 6 models complete analysis successfully
+- [ ] All 6 models complete analysis successfully (when `VITE_AI_PROVIDER='openrouter'`)
+- [ ] **Note:** When `VITE_AI_PROVIDER='openai'`, only native OpenAI model IDs work; selecting non-OpenAI models will fail
 
 **Test 6: Model Fallback**
 - [ ] Remove `VITE_DEFAULT_MODEL` from environment
