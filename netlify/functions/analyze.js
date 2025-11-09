@@ -228,11 +228,26 @@ export async function handler(event) {
     };
   }
 
+  // Check for user-provided API key in Authorization header
+  const authHeader = event.headers['authorization'] || event.headers['Authorization'];
+  let userProvidedKey = null;
+
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    userProvidedKey = authHeader.substring(7); // Remove 'Bearer ' prefix
+    console.log('[netlify] User-provided API key detected');
+  }
+
   // Determine AI provider with backward compatibility
   let provider = process.env.VITE_AI_PROVIDER;
   
   // Normalize provider to avoid case/whitespace configuration pitfalls
   provider = (provider || '').trim().toLowerCase();
+  
+  // If user provided a key, default to openrouter (most common use case)
+  if (!provider && userProvidedKey) {
+    provider = 'openrouter';
+    console.log('[netlify] Defaulting to openrouter for user-provided key');
+  }
   
   // Backward compatibility: default to 'openai' if VITE_AI_PROVIDER not set but OPENAI_API_KEY exists
   if (!provider && process.env.OPENAI_API_KEY) {
@@ -257,45 +272,50 @@ export async function handler(event) {
   let headers;
 
   if (provider === 'openrouter') {
-    // Validate OpenRouter API key
-    if (!process.env.OPENROUTER_API_KEY) {
-      console.error('[netlify] OPENROUTER_API_KEY environment variable not set');
+    // Use user-provided key if available, otherwise fall back to env var
+    apiKey = userProvidedKey || process.env.OPENROUTER_API_KEY;
+    
+    if (!apiKey) {
+      console.error('[netlify] No OpenRouter API key available (neither user-provided nor env var)');
       return {
-        statusCode: 500,
+        statusCode: 401,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          error: 'Server configuration error: OPENROUTER_API_KEY is not set' 
+          error: 'API key required. Please provide your OpenRouter API key in settings.' 
         })
       };
     }
 
     baseURL = 'https://openrouter.ai/api/v1/chat/completions';
-    apiKey = process.env.OPENROUTER_API_KEY;
     headers = {
       'Authorization': `Bearer ${apiKey}`,
       'HTTP-Referer': process.env.VITE_SITE_URL || '',
       'X-Title': process.env.VITE_SITE_NAME || 'The Inspector',
       'Content-Type': 'application/json'
     };
+    console.log('[netlify] Using OpenRouter with', userProvidedKey ? 'user-provided' : 'environment', 'API key');
   } else {
     // Default to OpenAI
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('[netlify] OPENAI_API_KEY environment variable not set');
+    // Use user-provided key if available, otherwise fall back to env var
+    apiKey = userProvidedKey || process.env.OPENAI_API_KEY;
+    
+    if (!apiKey) {
+      console.error('[netlify] No OpenAI API key available (neither user-provided nor env var)');
       return {
-        statusCode: 500,
+        statusCode: 401,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          error: 'Server configuration error: OPENAI_API_KEY not set' 
+          error: 'API key required. Please provide your OpenAI API key in settings.' 
         })
       };
     }
 
     baseURL = 'https://api.openai.com/v1/chat/completions';
-    apiKey = process.env.OPENAI_API_KEY;
     headers = {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json'
     };
+    console.log('[netlify] Using OpenAI with', userProvidedKey ? 'user-provided' : 'environment', 'API key');
   }
 
   console.log('[netlify] Using AI provider:', provider);
