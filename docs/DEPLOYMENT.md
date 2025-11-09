@@ -668,6 +668,59 @@ The Inspector includes a model selection dropdown with 6 curated AI models:
 - Optimize OpenAI prompt (reduce max_tokens)
 - Check OpenAI API status (https://status.openai.com)
 
+**Note:** If you're experiencing timeouts with slow AI models (50-60+ seconds), the background functions architecture should handle this automatically. If timeouts persist, see the "Background Functions Not Working" troubleshooting section below.
+
+### Issue 3a: Background Functions Not Working
+
+**Symptoms:**
+- Analysis still times out after 26 seconds with slow AI models
+- 504 Gateway Timeout errors persist
+- Polling never completes (stuck in "pending" state)
+
+**Possible Causes:**
+1. Background function not detected by Netlify (incorrect export signature)
+2. Netlify Blobs not configured or accessible
+3. Background function trigger failing
+4. Environment variables not set correctly
+
+**Solutions:**
+
+1. **Verify Background Function Detection:**
+   - Check Netlify Functions dashboard: analyze-background should be listed as "Background Function" (not "Serverless Function")
+   - Verify export signature in `netlify/functions/analyze-background.js`:
+     - Must use `export default async (req, context) => { ... }`
+     - Must include `export const config = { path: '/analyze-background' }`
+   - Redeploy if export signature was incorrect
+
+2. **Check Netlify Blobs Access:**
+   - Netlify Blobs is automatically available on all Netlify sites (no configuration needed)
+   - Verify `@netlify/blobs` package is installed: `npm list @netlify/blobs`
+   - Check function logs for blob storage errors
+
+3. **Verify Background Function Trigger:**
+   - Check analyze-start.js logs for "Background function triggered" message
+   - Verify dynamic URL construction is working (check x-forwarded-proto and host headers)
+   - Test locally with `netlify dev` to verify trigger works
+
+4. **Check Environment Variables:**
+   - Verify all required environment variables are set (see Environment Variables section)
+   - Especially check: OPENROUTER_API_KEY or OPENAI_API_KEY, VITE_AI_PROVIDER
+   - Redeploy after updating environment variables
+
+5. **Monitor Function Logs:**
+   - Go to Netlify Dashboard → Functions → Select function → View logs
+   - Look for errors in analyze-background.js execution
+   - Check for AI API errors (401, 429, 500, 502, 504)
+
+6. **Test with Fast Model First:**
+   - Try Claude 3.5 Sonnet or GPT-4o (3-8 second response time)
+   - If fast models work but slow models don't, the background function is working correctly
+   - Slow models (Moonshot Kimi K2 Thinking) should complete in 50-60 seconds
+
+**See Also:**
+- `docs/BACKGROUND_FUNCTIONS.md` - Architecture details
+- `docs/TESTING_GUIDE.md` - Comprehensive testing procedures
+
 ### Issue 4: Build Fails
 
 **Symptoms:**

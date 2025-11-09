@@ -27,6 +27,7 @@ function InspectorForm({ onAnalysisComplete, onAnalysisStart, selectedModel, onM
   const [packageName, setPackageName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   // Validate selectedModel on mount and correct if invalid
   React.useEffect(() => {
@@ -36,6 +37,31 @@ function InspectorForm({ onAnalysisComplete, onAnalysisStart, selectedModel, onM
       onModelChange(MODEL_OPTIONS[0].value);
     }
   }, [selectedModel, onModelChange]);
+
+  // Elapsed time counter
+  React.useEffect(() => {
+    let intervalId = null;
+
+    if (isLoading) {
+      // Reset counter when loading starts
+      setElapsedSeconds(0);
+      
+      // Start interval to increment every second
+      intervalId = setInterval(() => {
+        setElapsedSeconds(prev => prev + 1);
+      }, 1000);
+    } else {
+      // Reset counter when loading stops
+      setElapsedSeconds(0);
+    }
+
+    // Cleanup function
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [isLoading]);
 
   // Event handlers
   const handleInputChange = (event) => {
@@ -155,7 +181,17 @@ function InspectorForm({ onAnalysisComplete, onAnalysisStart, selectedModel, onM
         </div>
       </div>
       {error && <ErrorMessage message={error} onDismiss={handleErrorDismiss} />}
-      {isLoading && <LoadingSpinner />}
+      {isLoading && (
+        <LoadingSpinner 
+          message={
+            elapsedSeconds < 30
+              ? 'Analyzing package... This may take up to 2 minutes for complex models.'
+              : elapsedSeconds < 60
+              ? `Analyzing package... Still processing (${elapsedSeconds}s elapsed)...`
+              : `Analyzing package... Still processing (${Math.floor(elapsedSeconds / 60)}m ${elapsedSeconds % 60}s elapsed)...`
+          }
+        />
+      )}
     </form>
   );
 }

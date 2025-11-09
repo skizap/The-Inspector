@@ -28,23 +28,30 @@ import axios from 'axios';
 
 // Constants
 // Platform-specific endpoint detection:
-// - Vercel: /api/analyze
-// - Netlify: /.netlify/functions/analyze
+// - Vercel: /api/analyze-start
+// - Netlify: /.netlify/functions/analyze-start
 // Reads VITE_DEPLOY_PLATFORM env var for deterministic selection
 // Falls back to runtime detection with retry on 404/NETWORK_ERROR
 const DEPLOY_PLATFORM = import.meta.env.VITE_DEPLOY_PLATFORM;
 const SERVERLESS_ENDPOINT = DEPLOY_PLATFORM === 'netlify'
-  ? '/.netlify/functions/analyze'
-  : '/api/analyze';
+  ? '/.netlify/functions/analyze-start'
+  : '/api/analyze-start';
 const FALLBACK_ENDPOINT = DEPLOY_PLATFORM === 'netlify'
-  ? '/api/analyze'
-  : '/.netlify/functions/analyze';
+  ? '/api/analyze-start'
+  : '/.netlify/functions/analyze-start';
+const STATUS_ENDPOINT = DEPLOY_PLATFORM === 'netlify'
+  ? '/.netlify/functions/analyze-status'
+  : '/api/analyze-status';
+const STATUS_FALLBACK_ENDPOINT = DEPLOY_PLATFORM === 'netlify'
+  ? '/api/analyze-status'
+  : '/.netlify/functions/analyze-status';
 // Allow timeout override via VITE_AI_TIMEOUT env var (useful for Netlify's shorter limits)
 const DEFAULT_TIMEOUT = import.meta.env.VITE_AI_TIMEOUT 
   ? parseInt(import.meta.env.VITE_AI_TIMEOUT, 10) 
   : 30000;
-const MAX_RETRY_ATTEMPTS = 3;
-const RETRY_DELAYS = [1000, 2000, 4000];
+// Polling configuration for background jobs
+const POLL_INTERVAL = 3000; // 3 seconds
+const MAX_POLL_ATTEMPTS = 100; // 5 minutes total (100 * 3s = 300s)
 
 /**
  * Validates package data structure
@@ -334,6 +341,162 @@ function _getStoredApiKey() {
 }
 
 /**
+ * Starts an analysis job via POST to /analyze-start endpoint
+ * @param {Object} packageData - Package metadata
+ * @param {Array} vulnerabilities - Array of vulnerability objects
+ * @param {string|null} model - AI model to use
+ * @param {string|null} userApiKey - User-provided API key
+ * @param {boolean} useFallback - Whether to use fallback endpoint
+ * @param {number} timeout - Request timeout in milliseconds
+ * @returns {Promise<string>} Job ID
+ * @throws {Error} If job creation fails
+ * @private
+ */
+async function _startAnalysisJob(packageData, vulnerabilities, model, userApiKey, useFallback, timeout) {
+  const endpoint = useFallback ? FALLBACK_ENDPOINT : SERVERLESS_ENDPOINT;
+  console.log('[ai] Starting analysis job at:', endpoint);
+
+  const requestBody = {
+    packageData: {
+      name: packageData.name,
+      version: packageData.version,
+      dependencies: packageData.dependencies,
+      license: packageData.license,
+      lastPublishDate: packageData.lastPublishDate || null,
+      githubStats: packageData.githubStats || null
+    },
+    vulnerabilities: vulnerabilities.map(v => ({
+      package: v.package,
+      id: v.id,
+      severity: v.severity,
+      summary: v.summary
+    })),
+    model: model || undefined
+  };
+
+  try {
+    const response = await axios.post(endpoint, requestBody, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(userApiKey ? { 'Authorization': `Bearer ${userApiKey}` } : {})
+      },
+      timeout
+    });
+
+    // Validate response has jobId
+    if (!response.data?.jobId) {
+      throw new Error('Invalid response: missing jobId');
+    }
+
+    console.log('[ai] Job started with ID:', response.data.jobId);
+    return response.data.jobId;
+
+  } catch (error) {
+    console.error('[ai] Failed to start analysis job:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Polls the /analyze-status endpoint for job completion
+ * @param {string} jobId - Job ID to poll
+ * @param {boolean} useFallback - Whether to use fallback endpoint
+ * @returns {Promise<Object>} Analysis summary object
+ * @throws {Error} If polling fails or times out
+ * @private
+ */
+async function _pollJobStatus(jobId, useFallback) {
+  let endpoint = useFallback ? STATUS_FALLBACK_ENDPOINT : STATUS_ENDPOINT;
+  console.log('[ai] Polling job status:', jobId);
+
+  for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
+    // Wait before polling (except first attempt)
+    if (attempt > 0) {
+      await _sleep(POLL_INTERVAL);
+    }
+
+    try {
+      const response = await axios.get(`${endpoint}?jobId=${jobId}`, {
+        timeout: 10000 // 10 second timeout for status checks
+      });
+
+      const { status, result, error } = response.data;
+
+      if (status === 'completed') {
+        console.log('[ai] Job completed:', jobId);
+        
+        // Validate result structure
+        if (!result || !result.summary) {
+          throw _createErrorObject(
+            'VALIDATION_ERROR',
+            'Invalid status response: missing result.summary',
+            new Error('Invalid status response')
+          );
+        }
+        
+        return result.summary;
+      }
+
+      if (status === 'failed') {
+        console.error('[ai] Job failed:', jobId, error);
+        
+        // Use structured errorCode if present for reliable mapping
+        const { errorCode } = response.data;
+        
+        if (errorCode) {
+          // Use errorCode directly from backend
+          throw _createErrorObject(errorCode, error || 'Analysis failed', new Error(error));
+        }
+        
+        // Fallback to substring matching if errorCode not present (backward compatibility)
+        if (error && error.includes('API key')) {
+          throw _createErrorObject('INVALID_API_KEY', error, new Error(error));
+        }
+        
+        throw _createErrorObject('API_ERROR', error || 'Analysis failed', new Error(error));
+      }
+
+      if (status === 'pending') {
+        console.log('[ai] Job still processing:', jobId, `(attempt ${attempt + 1}/${MAX_POLL_ATTEMPTS})`);
+        continue;
+      }
+
+      // Unknown status
+      throw new Error(`Unknown job status: ${status}`);
+
+    } catch (error) {
+      // Check if this is a 404 or network error on primary endpoint
+      const is404 = error.response?.status === 404;
+      const isNetworkError = !error.response;
+      const canFallback = !useFallback && (is404 || isNetworkError);
+
+      if (canFallback) {
+        console.log('[ai] Status endpoint failed, trying fallback');
+        endpoint = STATUS_FALLBACK_ENDPOINT;
+        useFallback = true;
+        continue;
+      }
+
+      // If this is a timeout or network error during polling, retry
+      if (_shouldRetry(error) && attempt < MAX_POLL_ATTEMPTS - 1) {
+        console.log('[ai] Polling error, retrying:', error.message);
+        continue;
+      }
+
+      // If we've exhausted retries, throw the error
+      throw error;
+    }
+  }
+
+  // Max attempts reached - timeout
+  throw _createErrorObject(
+    'TIMEOUT_ERROR',
+    'Analysis timed out after 5 minutes. This can happen with very slow AI models. Please try again.',
+    new Error('Polling timeout')
+  );
+}
+
+/**
  * Generates an AI-powered plain-English summary of package security and complexity
  * 
  * This function will use a user-provided API key from localStorage if available.
@@ -373,95 +536,76 @@ async function generateSummary(packageData, vulnerabilities, model = null, timeo
   const startTime = Date.now();
   console.log('[ai] Generating summary for:', packageData.name, 'at', new Date().toISOString());
 
-  // Retry loop with exponential backoff
+  // Retrieve user-provided API key if available
+  const userApiKey = _getStoredApiKey();
+  console.log('[ai] User API key:', userApiKey ? 'Found' : 'Not found');
+
   let useFallback = false;
-  for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
-    try {
-      // Build request body
-      const requestBody = {
-        packageData: {
-          name: packageData.name,
-          version: packageData.version,
-          dependencies: packageData.dependencies,
-          license: packageData.license,
-          lastPublishDate: packageData.lastPublishDate || null,
-          githubStats: packageData.githubStats || null
-        },
-        vulnerabilities: vulnerabilities.map(v => ({
-          package: v.package,
-          id: v.id,
-          severity: v.severity,
-          summary: v.summary
-        })),
-        model: model || undefined
-      };
+  let jobId = null;
 
-      // Select endpoint (primary or fallback)
-      const endpoint = useFallback ? FALLBACK_ENDPOINT : SERVERLESS_ENDPOINT;
-      console.log('[ai] Using endpoint:', endpoint);
+  // Phase 1: Start analysis job
+  try {
+    jobId = await _startAnalysisJob(packageData, vulnerabilities, model, userApiKey, useFallback, timeout);
+  } catch (error) {
+    // Check if this is a 404 or network error on primary endpoint
+    const is404 = error.response?.status === 404;
+    const isNetworkError = !error.response;
 
-      // Retrieve user-provided API key if available
-      const userApiKey = _getStoredApiKey();
-      console.log('[ai] User API key:', userApiKey ? 'Found' : 'Not found');
-
-      // Make request to serverless endpoint
-      const response = await axios.post(endpoint, requestBody, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(userApiKey ? { 'Authorization': `Bearer ${userApiKey}` } : {})
-        },
-        timeout
-      });
-
-      // Validate response
-      _validateResponse(response.data);
-
-      // Extract summary
-      const summary = response.data.summary;
-
-      // Success logging
-      const responseTime = Date.now() - startTime;
-      console.log('[ai] Successfully generated summary for:', packageData.name, 'in', responseTime, 'ms');
-      console.log('[ai] Risk level:', summary.riskLevel);
-
-      return summary;
-
-    } catch (error) {
-      const isLastAttempt = attempt === MAX_RETRY_ATTEMPTS - 1;
-      const shouldRetryResult = _shouldRetry(error);
-
-      // Check if this is a 404 or network error on primary endpoint
-      const is404 = error.response?.status === 404;
-      const isNetworkError = !error.response;
-      const canFallback = !useFallback && (is404 || isNetworkError);
-
-      if (canFallback) {
-        // Try fallback endpoint once
-        console.log('[ai] Primary endpoint failed, trying fallback endpoint');
-        useFallback = true;
-        continue;
-      }
-
-      if (isLastAttempt || !shouldRetryResult) {
-        // Map error and throw
-        const errorObj = _mapAxiosError(error, packageData.name);
-        console.error('[ai] Error generating summary:', packageData.name, errorObj.type, errorObj.message);
+    if (!useFallback && (is404 || isNetworkError)) {
+      // Try fallback endpoint once
+      console.log('[ai] Primary endpoint failed, trying fallback endpoint');
+      useFallback = true;
+      
+      try {
+        jobId = await _startAnalysisJob(packageData, vulnerabilities, model, userApiKey, useFallback, timeout);
+      } catch (fallbackError) {
+        const errorObj = _mapAxiosError(fallbackError, packageData.name);
+        console.error('[ai] Error starting analysis job:', packageData.name, errorObj.type, errorObj.message);
         throw errorObj;
       }
-
-      // Log retry attempt
-      console.log('[ai] Retry attempt', attempt + 1, '/', MAX_RETRY_ATTEMPTS, 'for package:', packageData.name);
-
-      // Wait before retry - use Retry-After if provided, otherwise use exponential backoff
-      if (typeof shouldRetryResult === 'number') {
-        const retryAfterMs = shouldRetryResult * 1000;
-        console.log('[ai] Respecting Retry-After:', shouldRetryResult, 'seconds');
-        await _sleep(retryAfterMs);
-      } else {
-        await _sleep(RETRY_DELAYS[attempt]);
-      }
+    } else {
+      const errorObj = _mapAxiosError(error, packageData.name);
+      console.error('[ai] Error starting analysis job:', packageData.name, errorObj.type, errorObj.message);
+      throw errorObj;
     }
   }
+
+  // Phase 2: Poll for job completion
+  let summary;
+  try {
+    summary = await _pollJobStatus(jobId, useFallback);
+  } catch (error) {
+    // If error is already formatted, re-throw
+    if (error.type && error.message) {
+      console.error('[ai] Error during polling:', packageData.name, error.type, error.message);
+      throw error;
+    }
+
+    // Otherwise, map the error
+    const errorObj = _mapAxiosError(error, packageData.name);
+    console.error('[ai] Error during polling:', packageData.name, errorObj.type, errorObj.message);
+    throw errorObj;
+  }
+
+  // Validate response
+  try {
+    _validateResponse({ summary });
+  } catch (validationError) {
+    const errorObj = _createErrorObject(
+      'VALIDATION_ERROR',
+      validationError.message,
+      validationError
+    );
+    console.error('[ai] Validation error after polling:', errorObj.message);
+    throw errorObj;
+  }
+
+  // Success logging
+  const responseTime = Date.now() - startTime;
+  console.log('[ai] Successfully generated summary for:', packageData.name, 'in', responseTime, 'ms');
+  console.log('[ai] Risk level:', summary.riskLevel);
+
+  return summary;
 }
 
 export { generateSummary };

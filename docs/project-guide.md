@@ -3,7 +3,7 @@
 **Project Name:** The Inspector  
 **Hackathon:** Kiroween (Kiro IDE Hackathon)  
 **Category:** Frankenstein  
-**Timeline:** 4 days (November 5-8, 2025)  
+**Timeline:** 5 days (November 5-9, 2025)  
 **Objective:** ✅ COMPLETED - Built a genuinely useful developer tool that showcases advanced Kiro IDE features
 
 ---
@@ -12,7 +12,7 @@
 
 **The Inspector** is a completed web-based developer utility that acts as an "X-ray" for open-source packages. Before installing a package from npm, developers can use The Inspector to generate a comprehensive "Nutrition Label" report that reveals hidden dependencies, security vulnerabilities, license restrictions, and overall complexity. This tool solves a real, painful problem that every developer faces: understanding the true cost and risk of adding a dependency to their project.
 
-This project was designed to win the **Frankenstein category** by stitching together multiple disparate technologies (npm API, OSV security database, OpenAI and OpenRouter APIs (multi-provider support), and React) into a single, powerful application. More importantly, it demonstrated **advanced mastery of Kiro IDE** through sophisticated use of specs, agent hooks, steering docs, and vibe coding. The project was completed in just 4 days (November 5-8, 2025), showcasing the exceptional productivity gains possible with Kiro IDE's spec-driven development, agent hooks, and vibe coding features.
+This project was designed to win the **Frankenstein category** by stitching together multiple disparate technologies (npm API, OSV security database, OpenAI and OpenRouter APIs (multi-provider support), and React) into a single, powerful application. More importantly, it demonstrated **advanced mastery of Kiro IDE** through sophisticated use of specs, agent hooks, steering docs, and vibe coding. The project was completed in just 5 days (November 5-9, 2025), showcasing the exceptional productivity gains possible with Kiro IDE's spec-driven development, agent hooks, and vibe coding features.
 
 ---
 
@@ -107,7 +107,17 @@ The project demonstrated that Kiro IDE can accelerate development by 87% - compl
 - ✅ Added user preferences persistence (model selection, API key storage, example package buttons) - November 7
 - ✅ Added Settings modal for API key management (src/components/Settings.jsx)
 
-**Phase 5: Deployment & Documentation (November 6-8, 2025)**
+**Phase 5: Background Functions Architecture (November 8-9, 2025)**
+- ✅ Implemented Netlify Background Functions for long-running AI analysis (15-minute timeout)
+- ✅ Created three-function architecture: analyze-start.js, analyze-background.js, analyze-status.js
+- ✅ Integrated Netlify Blobs for job result storage with 1-hour TTL
+- ✅ Updated frontend with polling mechanism (3-second intervals, 5-minute max)
+- ✅ Enhanced loading states with elapsed time counter
+- ✅ Created comprehensive testing guide (docs/TESTING_GUIDE.md)
+- ✅ Documented architecture in docs/BACKGROUND_FUNCTIONS.md
+- ✅ Resolved timeout issues with slow AI models (Moonshot Kimi K2 Thinking)
+
+**Phase 6: Deployment & Documentation (November 6-8, 2025)**
 - ✅ Deployed to Vercel at https://the-inspector.vercel.app
 - ✅ Created comprehensive documentation (README.md, docs/README.md, DEPLOYMENT.md, etc.)
 - ✅ Prepared hackathon submission materials (HACKATHON_WRITEUP.md, DEMO_SCRIPT.md)
@@ -144,7 +154,15 @@ The project was completed in an accelerated 4-day timeline, demonstrating the po
 - Final documentation updates
 - All placeholder URLs replaced with actual deployment links
 
-**Key Achievement:** Completed in 4 days instead of the planned 30 days - an 87% reduction in development time, attributed to Kiro IDE's spec-driven development, vibe coding, and agent hooks.
+**Day 5 (November 9, 2025):**
+- Background functions architecture implemented (analyze-start, analyze-background, analyze-status)
+- Netlify Blobs integration for job result storage
+- Frontend polling mechanism with elapsed time tracking
+- Comprehensive testing guide created
+- Architecture documentation completed
+- Timeout issues resolved for slow AI models
+
+**Key Achievement:** Completed in 5 days instead of the planned 30 days - an 83% reduction in development time, attributed to Kiro IDE's spec-driven development, vibe coding, and agent hooks. The additional day was spent implementing a sophisticated background functions architecture to handle long-running AI requests.
 
 ---
 
@@ -214,6 +232,36 @@ Follow #steering:code-conventions.md and #steering:security-policies.md
 - Created `src/config/models.js` as single source of truth for model options
 
 **Impact:** This feature demonstrates advanced React patterns (custom hooks, localStorage integration, modal accessibility) and provides significant UX improvements (persistent preferences, user-provided API keys, quick testing).
+
+### Background Functions Architecture (Advanced Feature)
+
+We used Kiro to implement a sophisticated background functions architecture to solve timeout issues with slow AI models:
+
+**Problem Statement:**
+Slow AI models like Moonshot Kimi K2 Thinking take 50-60+ seconds to respond, exceeding Netlify's 26-second function timeout limit and causing 504 Gateway Timeout errors.
+
+**Prompt to Kiro:**
+```
+Implement Netlify Background Functions architecture to handle long-running AI analysis:
+1. Create analyze-start.js to initiate jobs and return jobId immediately
+2. Create analyze-background.js as background function (15-min timeout) to process AI requests
+3. Create analyze-status.js to poll for job completion
+4. Use Netlify Blobs for result storage with 1-hour TTL
+5. Update frontend with polling mechanism (3-second intervals, 5-minute max)
+6. Add elapsed time counter to loading states
+Follow #steering:api-standards.md and #steering:code-conventions.md
+```
+
+**What Kiro Generated:**
+- Created three Netlify functions with proper export signatures and error handling
+- Implemented job-based polling architecture with unique UUID job IDs
+- Integrated @netlify/blobs package for result storage with metadata (timestamp, ttl, expiresAt)
+- Updated src/api/ai.js with `_startAnalysisJob()` and `_pollJobStatus()` helper functions
+- Enhanced InspectorForm.jsx with elapsed time tracking using React hooks
+- Created comprehensive testing guide (docs/TESTING_GUIDE.md) with 7 test scenarios
+- Documented architecture in docs/BACKGROUND_FUNCTIONS.md with sequence diagrams
+
+**Impact:** This architecture enables slow AI models to complete successfully without timeout errors, demonstrating advanced serverless patterns (background functions, job queuing, polling, blob storage) and significantly improving user experience for long-running analyses. The implementation showcases Kiro's ability to generate complex, production-ready architectures from high-level requirements.
 
 ### Steering Docs
 

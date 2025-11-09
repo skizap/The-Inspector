@@ -1,6 +1,23 @@
 /**
  * Netlify-compatible serverless function that acts as a secure proxy for AI API calls (OpenAI and OpenRouter).
  * This is a wrapper around the core logic from api/analyze.js adapted for Netlify's handler signature.
+ * 
+ * ⚠️ DEPRECATION NOTICE:
+ * This function is DEPRECATED and kept for backward compatibility only.
+ * 
+ * New implementations should use the background functions architecture:
+ * - analyze-start.js: Initiates analysis jobs and returns jobId
+ * - analyze-background.js: Processes long-running AI requests (15-min timeout)
+ * - analyze-status.js: Polls for job completion
+ * 
+ * The background functions architecture solves timeout issues with slow AI models
+ * (e.g., Moonshot Kimi K2 Thinking takes 50-60+ seconds, exceeding the 26-second
+ * Netlify function timeout limit).
+ * 
+ * See docs/BACKGROUND_FUNCTIONS.md for technical details.
+ * 
+ * This function may be removed in a future release after stable deployment
+ * of the background functions architecture.
  */
 
 import https from 'https';
@@ -224,7 +241,8 @@ function _makeStreamingRequest(baseURL, requestBody, headers) {
       headers: {
         ...headers,
         'Content-Length': Buffer.byteLength(bodyString)
-      }
+      },
+      timeout: DEFAULT_TIMEOUT
     };
 
     const req = protocol.request(options, (res) => {
@@ -273,6 +291,9 @@ function _makeStreamingRequest(baseURL, requestBody, headers) {
       req.destroy();
       reject(new Error('Request timed out'));
     });
+
+    // Set timeout on the request
+    req.setTimeout(DEFAULT_TIMEOUT);
 
     req.write(bodyString);
     req.end();

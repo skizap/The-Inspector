@@ -22,6 +22,30 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
+# Function-specific timeout configurations
+# Standard functions have configurable timeouts (default: 10 seconds)
+# Background functions automatically receive 15-minute timeout from Netlify
+
+# analyze-start: Job initiator (Standard Function)
+# Validates inputs, generates UUID, triggers background function
+# Expected completion: <5 seconds, 10-second timeout provides safety margin
+[functions."analyze-start"]
+  timeout = 10
+
+# analyze-status: Status checker (Standard Function)
+# Performs blob lookup and JSON parsing
+# Expected completion: <1 second, 10-second timeout provides safety margin
+# Called frequently by polling (every 3 seconds), so keeping timeout low prevents resource waste
+[functions."analyze-status"]
+  timeout = 10
+
+# analyze-background: Long-running processor (Background Function)
+# Automatically receives 15-minute timeout from Netlify (no explicit configuration needed)
+# Netlify detects background functions by their export signature:
+#   - export default async (req, context) => { ... }
+#   - export const config = { path: '/analyze-background' }
+# This 15-minute timeout allows slow AI models (e.g., Moonshot Kimi K2 Thinking: 50-60+ seconds) to complete successfully
+
 # Redirect rules (optional - for SPA routing if needed)
 [[redirects]]
   from = "/*"
