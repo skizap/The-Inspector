@@ -10,6 +10,7 @@
  */
 export const MODEL_OPTIONS = [
   { value: 'moonshotai/kimi-k2-thinking', label: 'Moonshot Kimi K2 Thinking (Recommended)' },
+  { value: 'anthropic/claude-sonnet-4.5', label: 'Claude Sonnet 4.5' },
   { value: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
   { value: 'openai/gpt-4o', label: 'OpenAI GPT-4o' },
   { value: 'google/gemini-2.0-flash-exp:free', label: 'Google Gemini Flash (Free)' },

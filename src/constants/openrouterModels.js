@@ -8,6 +8,7 @@
  */
 export const VALID_OPENROUTER_MODELS = [
   'moonshotai/kimi-k2-thinking',
+  'anthropic/claude-sonnet-4.5',
   'anthropic/claude-3.5-sonnet',
   'openai/gpt-4o',
   'google/gemini-2.0-flash-exp:free',

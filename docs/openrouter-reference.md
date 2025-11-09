@@ -51,6 +51,7 @@ A good starting list of models to offer in the UI includes:
 | Model ID | Label for UI |
 | :--- | :--- |
 | `moonshotai/kimi-k2-thinking` | Moonshot Kimi K2 Thinking (Recommended) |
+| `anthropic/claude-sonnet-4.5` | Claude Sonnet 4.5 |
 | `anthropic/claude-3.5-sonnet` | Claude 3.5 Sonnet |
 | `openai/gpt-4o` | OpenAI GPT-4o |
 | `google/gemini-2.0-flash-exp:free` | Google Gemini Flash (Free) |
@@ -59,7 +60,7 @@ A good starting list of models to offer in the UI includes:
 
 ### 2.3. Implementation Status
 
-All six models listed above have been implemented and validated in The Inspector application. The model list is maintained in two locations for consistency:
+All seven models listed above have been implemented and validated in The Inspector application. The model list is maintained in two locations for consistency:
 - `src/config/models.js` - Frontend model options (MODEL_OPTIONS array)
 - `src/constants/openrouterModels.js` - Backend validation whitelist (VALID_OPENROUTER_MODELS array)
 
