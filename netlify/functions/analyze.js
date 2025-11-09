@@ -8,8 +8,9 @@ import { VALID_OPENROUTER_MODELS } from '../../src/constants/openrouterModels.js
 
 // Constants
 // Note: baseURL and model are determined dynamically based on provider
-// Timeout set to 8 seconds to work within Netlify Free tier's 10s function limit
-// (leaving 2s buffer for function initialization and response processing)
+// Timeout set to 8 seconds for AI API calls (Netlify functions have a 30-second execution limit)
+// Edge case: If frequent timeout errors occur in production, increase DEFAULT_TIMEOUT to 12000-15000ms.
+// For tasks requiring >30 seconds compute, migrate to Netlify Background Function and adjust client UX for async completion.
 const DEFAULT_TIMEOUT = 8000;
 const MAX_TOKENS = 1000;
 const TEMPERATURE = 0.7;

@@ -20,12 +20,6 @@
 [functions]
   # Functions directory
   directory = "netlify/functions"
-  
-  # Function timeout: 9 seconds (optimized for Free tier)
-  # Free tier max is 10 seconds - using 9s to leave 1s buffer for overhead
-  # Pro tier supports up to 26 seconds if you upgrade
-  # AI analysis is optimized to complete within this timeframe
-  timeout = 9
   node_bundler = "esbuild"
 
 # Redirect rules (optional - for SPA routing if needed)
