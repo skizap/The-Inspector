@@ -3,7 +3,8 @@
  * This is a wrapper around the core logic from api/analyze.js adapted for Netlify's handler signature.
  */
 
-import axios from 'axios';
+import https from 'https';
+import http from 'http';
 import { VALID_OPENROUTER_MODELS } from '../../src/constants/openrouterModels.js';
 
 // Constants
@@ -200,6 +201,82 @@ function _parseAIResponse(content) {
   }
 
   return parsed;
+}
+
+/**
+ * Makes a streaming request to the AI API and accumulates the response
+ * @param {string} baseURL - The API endpoint URL
+ * @param {Object} requestBody - The request payload
+ * @param {Object} headers - Request headers
+ * @returns {Promise<string>} The accumulated response content
+ */
+function _makeStreamingRequest(baseURL, requestBody, headers) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(baseURL);
+    const protocol = url.protocol === 'https:' ? https : http;
+    const bodyString = JSON.stringify(requestBody);
+
+    const options = {
+      hostname: url.hostname,
+      port: url.port || (url.protocol === 'https:' ? 443 : 80),
+      path: url.pathname,
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Length': Buffer.byteLength(bodyString)
+      }
+    };
+
+    const req = protocol.request(options, (res) => {
+      let fullContent = '';
+      let hasError = false;
+
+      res.on('data', (chunk) => {
+        const lines = chunk.toString().split('\n').filter(line => line.trim() !== '');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            
+            if (data === '[DONE]') {
+              continue;
+            }
+
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.choices && parsed.choices[0] && parsed.choices[0].delta && parsed.choices[0].delta.content) {
+                fullContent += parsed.choices[0].delta.content;
+              }
+            } catch (e) {
+              // Ignore parsing errors for individual chunks
+            }
+          }
+        }
+      });
+
+      res.on('end', () => {
+        if (hasError) return;
+        resolve(fullContent);
+      });
+
+      res.on('error', (error) => {
+        hasError = true;
+        reject(new Error(`Response error: ${error.message}`));
+      });
+    });
+
+    req.on('error', (error) => {
+      reject(new Error(`Request error: ${error.message}`));
+    });
+
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('Request timed out'));
+    });
+
+    req.write(bodyString);
+    req.end();
+  });
 }
 
 /**
@@ -411,27 +488,20 @@ export async function handler(event) {
       messages: messages,
       temperature: TEMPERATURE,
       max_tokens: MAX_TOKENS,
-      response_format: { type: 'json_object' }
+      response_format: { type: 'json_object' },
+      stream: true  // Enable streaming to avoid timeouts
     };
 
-    // Make AI API call
-    const response = await axios.post(baseURL, aiRequestBody, {
-      headers: headers,
-      timeout: DEFAULT_TIMEOUT
-    });
+    // Make AI API call with streaming support
+    const response = await _makeStreamingRequest(baseURL, aiRequestBody, headers);
 
     // Validate response structure
-    if (!response.data || !Array.isArray(response.data.choices) || response.data.choices.length === 0) {
-      throw new Error('Invalid AI response: missing choices array');
+    if (!response || typeof response !== 'string') {
+      throw new Error('Invalid AI response: no content received');
     }
 
-    if (!response.data.choices[0].message || typeof response.data.choices[0].message.content !== 'string') {
-      throw new Error('Invalid AI response: missing message.content');
-    }
-
-    // Extract and parse response
-    const content = response.data.choices[0].message.content;
-    const parsedSummary = _parseAIResponse(content);
+    // Parse the streamed response
+    const parsedSummary = _parseAIResponse(response);
 
     console.log('[netlify] Generated summary for:', packageData.name);
 
