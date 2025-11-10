@@ -4,7 +4,7 @@
 
 ## 🚀 Live Demo
 
-**[https://the-inspector.vercel.app](https://the-inspector.vercel.app)**
+**[https://the-inspector.netlify.app/](https://the-inspector.netlify.app/)**
 
 ## 📦 Repository
 
